@@ -106,10 +106,12 @@ export function useWhisper() {
   const [progress, setProgress] = useState(0);
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState(null);
+  const [recording, setRecording] = useState(null); // { url, duration, mimeType } or null
 
   const recorderRef = useRef(null);
   const streamRef = useRef(null);
   const chunksRef = useRef([]);
+  const startedAtRef = useRef(0);
 
   // Subscribe to model load progress for the lifetime of this hook.
   useEffect(() => {
@@ -167,13 +169,17 @@ export function useWhisper() {
 
     setError(null);
     setTranscript('');
+    if (recording?.url) URL.revokeObjectURL(recording.url);
+    setRecording(null);
 
     // 1. Ask for mic FIRST so the permission prompt is the very next thing
     //    the user sees — never make them wait through a 40 MB model download
     //    before knowing if mic access works.
+    console.log('[LengList] Requesting microphone…');
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('[LengList] Mic granted; tracks:', stream.getTracks().map((t) => t.label));
     } catch (e) {
       const name = e?.name || '';
       if (name === 'NotAllowedError' || name === 'SecurityError') {
@@ -200,31 +206,56 @@ export function useWhisper() {
       if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
     };
     recorder.onstop = async () => {
-      const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+      const duration = (Date.now() - startedAtRef.current) / 1000;
+      const mimeType = recorder.mimeType || 'audio/webm';
+      const blob = new Blob(chunksRef.current, { type: mimeType });
+      console.log(`[LengList] Stopped: ${duration.toFixed(2)}s, ${blob.size} bytes, ${mimeType}`);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
       if (blob.size === 0) {
-        setError('No audio captured. Hold the mic and speak the word.');
+        setError('No audio captured — try holding the mic for at least 1 second and speaking before tapping stop.');
         setStatus('error');
         return;
       }
+      // Expose the recording so the user can play it back even if
+      // transcription fails.
+      const url = URL.createObjectURL(blob);
+      setRecording({ url, duration, mimeType });
+
       try {
         setStatus('transcribing');
+        console.log('[LengList] Decoding audio…');
         const float32 = await blobToFloat32(blob);
-        const pipe = await getPipeline(); // resolves immediately if already loaded
+        console.log(`[LengList] Decoded: ${float32.length} samples @ 16kHz (${(float32.length / 16000).toFixed(2)}s)`);
+        console.log('[LengList] Awaiting pipeline…');
+        const pipe = await getPipeline();
+        console.log('[LengList] Running Whisper inference…');
         const out = await pipe(float32, { language: 'en', task: 'transcribe' });
-        setTranscript((out?.text || '').trim());
-        setStatus('ready');
+        console.log('[LengList] Transcript:', out);
+        const text = (out?.text || '').trim();
+        if (!text) {
+          setError('Whisper returned no text. Try recording again, a bit closer to the mic.');
+          setStatus('error');
+        } else {
+          setTranscript(text);
+          setStatus('ready');
+        }
       } catch (e) {
+        console.error('[LengList] Transcribe failed:', e);
         setError(e?.message || 'Could not transcribe the audio.');
         setStatus('error');
       }
     };
     recorderRef.current = recorder;
-    recorder.start();
+    // timeslice=100ms ensures `ondataavailable` fires even for very short
+    // recordings; otherwise some browsers only emit once on stop, which can
+    // produce an empty blob if the user taps stop quickly.
+    recorder.start(100);
+    startedAtRef.current = Date.now();
     setStatus('recording');
+    console.log('[LengList] Recording…');
   }
 
   function stop() {
@@ -236,7 +267,9 @@ export function useWhisper() {
   function reset() {
     setTranscript('');
     setError(null);
+    if (recording?.url) URL.revokeObjectURL(recording.url);
+    setRecording(null);
   }
 
-  return { status, progress, transcript, error, start, stop, reset };
+  return { status, progress, transcript, error, recording, start, stop, reset };
 }

@@ -52,7 +52,7 @@ const TONE = {
 export default function PronunciationCheck({ word }) {
   const available = whisperAvailable();
   const envIssue = available ? micEnvironmentIssue() : null;
-  const { status, progress, transcript, error, start, stop, reset } = useWhisper();
+  const { status, progress, transcript, error, recording, start, stop, reset } = useWhisper();
   const [last, setLast] = useState(null);
 
   // Re-score whenever a fresh transcript arrives.
@@ -173,6 +173,22 @@ export default function PronunciationCheck({ word }) {
         </div>
       </div>
 
+      {/* Playback of the user's own recording — visible whenever a recording
+          exists, even if scoring failed, so they can verify mic captured. */}
+      {recording?.url && (
+        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-3">
+          <span className="text-xs uppercase tracking-[0.16em] text-white/55">
+            Your take · {recording.duration.toFixed(1)}s
+          </span>
+          <audio
+            src={recording.url}
+            controls
+            className="h-9 flex-1"
+            preload="metadata"
+          />
+        </div>
+      )}
+
       <AnimatePresence>
         {last && (
           <motion.div
@@ -187,6 +203,9 @@ export default function PronunciationCheck({ word }) {
                   Heard
                 </div>
                 <div className="font-display text-lg font-semibold">"{last.heard}"</div>
+                <div className="mt-1 text-[11px] opacity-70">
+                  Target: <span className="font-mono">{word}</span>
+                </div>
               </div>
               <div className="text-right">
                 <div className="font-display text-3xl font-bold leading-none">{last.score}%</div>
