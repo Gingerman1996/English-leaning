@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Lazy singleton: the Whisper-tiny.en pipeline is ~40 MB on first load and is
 // cached by the browser's Cache API thereafter. We share one promise across
@@ -314,12 +314,18 @@ export function useWhisper() {
     }
   }
 
-  function reset() {
+  // useCallback so the reference is stable across renders. Otherwise
+  // PronunciationCheck's `useEffect(..., [word, reset])` fires on EVERY
+  // render and re-clears transcript + last score before the user can see
+  // them — a sneaky race that hid the score card right after computing it.
+  const reset = useCallback(() => {
     setTranscript('');
     setError(null);
-    if (recording?.url) URL.revokeObjectURL(recording.url);
-    setRecording(null);
-  }
+    setRecording((prev) => {
+      if (prev?.url) URL.revokeObjectURL(prev.url);
+      return null;
+    });
+  }, []);
 
   return { status, progress, transcript, error, recording, start, stop, reset };
 }
