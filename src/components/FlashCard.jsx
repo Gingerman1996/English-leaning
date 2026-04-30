@@ -1,0 +1,158 @@
+import { motion, AnimatePresence } from 'framer-motion';
+import { useDictionary, playAudio } from '../hooks/useDictionary.js';
+import { LEVEL_META } from '../data/levels.js';
+
+function LevelChip({ code }) {
+  const meta = LEVEL_META.find((l) => l.code === code);
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full bg-gradient-to-r ${meta.accent} px-2.5 py-1 text-[11px] font-bold text-white shadow`}
+    >
+      {meta.emoji} {code}
+    </span>
+  );
+}
+
+export default function FlashCard({ word, revealed, onReveal, onRate, onSkip, queueIndex, queueTotal }) {
+  const { data, loading, error } = useDictionary(word.word, word.pos);
+
+  return (
+    <motion.div
+      key={word.id}
+      initial={{ opacity: 0, y: 30, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -30, scale: 0.96 }}
+      transition={{ duration: 0.35 }}
+      className="relative w-full max-w-2xl"
+    >
+      <div className="mb-3 flex items-center justify-between text-xs text-white/60">
+        <span>
+          Card {queueIndex + 1} / {queueTotal}
+        </span>
+        <button onClick={onSkip} className="text-white/50 hover:text-white">
+          Skip →
+        </button>
+      </div>
+
+      <div className="glass-strong glow-ring relative overflow-hidden rounded-[2rem] p-8 sm:p-12">
+        <div className="pointer-events-none absolute inset-0 bg-stars opacity-30" />
+        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-fuchsia-500/30 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-indigo-500/30 blur-3xl" />
+
+        <div className="relative">
+          <div className="mb-4 flex items-center justify-between">
+            <LevelChip code={word.level} />
+            {data?.audio && (
+              <button
+                onClick={() => playAudio(data.audio)}
+                className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
+              >
+                <span>🔊</span> play
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-baseline gap-3">
+            <h2 className="heading text-5xl sm:text-6xl">{word.word}</h2>
+            {data?.phonetic && (
+              <span className="font-mono text-lg text-white/55">{data.phonetic}</span>
+            )}
+          </div>
+          <div className="mt-1 text-sm uppercase tracking-[0.18em] text-white/45">{word.pos}</div>
+
+          <AnimatePresence mode="wait">
+            {!revealed ? (
+              <motion.div
+                key="hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="mt-10"
+              >
+                <p className="text-white/50">
+                  Try to recall the meaning, then reveal to check yourself.
+                </p>
+                <button onClick={onReveal} className="btn-primary mt-6 w-full">
+                  Reveal meaning
+                </button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="shown"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="mt-6"
+              >
+                {loading && <p className="text-white/55">Looking up Oxford-style entry…</p>}
+                {error && (
+                  <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+                    Couldn't fetch live definition. You can still rate your recall below.
+                  </div>
+                )}
+                {data && (
+                  <div className="space-y-4">
+                    {data.definitions.length === 0 && (
+                      <p className="text-white/55">No definition available.</p>
+                    )}
+                    {data.definitions.slice(0, 3).map((d, i) => (
+                      <div
+                        key={i}
+                        className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                      >
+                        <div className="mb-1 text-[11px] uppercase tracking-[0.18em] text-white/45">
+                          {d.pos}
+                        </div>
+                        <p className="text-white/90">{d.text}</p>
+                        {d.example && (
+                          <p className="mt-2 text-sm italic text-white/60">“{d.example}”</p>
+                        )}
+                        {d.synonyms.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {d.synonyms.map((s) => (
+                              <span key={s} className="pill text-[10px]">
+                                = {s}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-6 grid grid-cols-4 gap-2">
+                  {[
+                    { label: 'Again', sub: 'forgot', tone: 'rose', rating: 0 },
+                    { label: 'Hard', sub: 'tough', tone: 'amber', rating: 1 },
+                    { label: 'Good', sub: 'recalled', tone: 'emerald', rating: 2 },
+                    { label: 'Easy', sub: 'mastered', tone: 'sky', rating: 3 },
+                  ].map((b) => (
+                    <button
+                      key={b.label}
+                      onClick={() => onRate(b.rating)}
+                      className={[
+                        'group flex flex-col items-center justify-center rounded-2xl border border-white/10 px-2 py-3 text-sm font-semibold transition hover:-translate-y-0.5',
+                        b.tone === 'rose' && 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-100',
+                        b.tone === 'amber' && 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-100',
+                        b.tone === 'emerald' && 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100',
+                        b.tone === 'sky' && 'bg-sky-500/15 hover:bg-sky-500/25 text-sky-100',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
+                      <span>{b.label}</span>
+                      <span className="text-[10px] font-normal opacity-70 group-hover:opacity-100">
+                        {b.sub}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    </motion.div>
+  );
+}

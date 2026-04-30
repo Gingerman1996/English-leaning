@@ -1,0 +1,28 @@
+# Two profiles:
+#   docker compose --profile prod up         → nginx-served production build on :8080
+#   docker compose --profile dev  up         → vite dev server with HMR on :5173
+services:
+  app:
+    profiles: ["prod"]
+    build:
+      context: .
+      target: prod
+    image: lexquest:latest
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+  dev:
+    profiles: ["dev"]
+    build:
+      context: .
+      target: dev
+    image: lexquest:dev
+    command: npm run dev -- --host 0.0.0.0
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
