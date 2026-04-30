@@ -2,14 +2,14 @@
 
 Gamified English vocabulary learning app with **CEFR levels**, **Anki-style spaced repetition**, and the **Mind Stones** progression system. Built with React + Vite + Tailwind + Framer Motion.
 
-**~5,300 headwords** drawn from the public Oxford 3000 / 5000 word lists (A1–C1) plus a curated C2 set, with definitions, audio, phonetics, and examples fetched live from the open [Free Dictionary API](https://dictionaryapi.dev/) (Oxford / Wiktionary derived).
+**4,753 headwords** parsed from the **official American Oxford 3000 / 5000 PDFs** ([oxfordlearnersdictionaries.com](https://www.oxfordlearnersdictionaries.com/wordlists/oxford3000-5000)) covering A1–C1, plus a curated C2 set. Definitions, audio, phonetics, and examples are fetched live from the open [Free Dictionary API](https://dictionaryapi.dev/) (Oxford / Wiktionary derived).
 
 ![hero](https://img.shields.io/badge/CEFR-A1%E2%86%92C2-7c3aed) ![SRS](https://img.shields.io/badge/SRS-Anki%20style-22d3ee) ![Stack](https://img.shields.io/badge/React-Vite-3b82f6)
 
 ## Features
 
 - **CEFR Level Chef** — 6-tier progression (A1 → C2) with cooking-themed titles, from *Apprentice Chef* to *Master Chef*. The threshold table is the canonical Oxford / Cambridge band.
-- **5,349 word catalog** — A1: 898 · A2: 867 · B1: 802 · B2: 1,428 · C1: 1,314 · C2: 40 (curated). Source: [tyypgzl/Oxford-5000-words](https://github.com/tyypgzl/Oxford-5000-words).
+- **4,753 word catalog** — A1: 845 · A2: 751 · B1: 658 · B2: 1,244 · C1: 1,215 · C2: 40 (curated). Headwords parsed from the official Oxford American PDFs and cross-deduped (a word never appears at two levels).
 - **Mind Stones** — six legendary stones that you forge by reaching milestones (10, 50, 200, 500, 1500, 4000 words learned). Each stone has its own glow, color, and lore.
 - **Anki-style SRS** — simplified SM-2: cards have ease, interval, repetitions, and lapses; reviewer rates recall on a 0–3 scale (Again / Hard / Good / Easy) and the next due date is computed accordingly.
 - **Live dictionary entries** — phonetic, audio playback, multiple definitions, examples, synonyms, all fetched on demand and cached in memory.
