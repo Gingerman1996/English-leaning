@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useWhisper, whisperAvailable } from '../hooks/useWhisper.js';
+import {
+  useWhisper,
+  whisperAvailable,
+  micEnvironmentIssue,
+  preloadWhisper,
+} from '../hooks/useWhisper.js';
 import { scorePronunciation, scoreLabel } from '../utils/phonetics.js';
 import { speak, ttsAvailable } from '../hooks/useSpeech.js';
 
@@ -46,6 +51,7 @@ const TONE = {
 
 export default function PronunciationCheck({ word }) {
   const available = whisperAvailable();
+  const envIssue = available ? micEnvironmentIssue() : null;
   const { status, progress, transcript, error, start, stop, reset } = useWhisper();
   const [last, setLast] = useState(null);
 
@@ -64,6 +70,12 @@ export default function PronunciationCheck({ word }) {
     reset();
   }, [word, reset]);
 
+  // Warm up the model while the user reads the definition. By the time they
+  // tap the mic, the 40 MB Whisper download is often already cached.
+  useEffect(() => {
+    if (available && !envIssue) preloadWhisper();
+  }, [available, envIssue]);
+
   if (!available) {
     return (
       <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-100">
@@ -73,17 +85,36 @@ export default function PronunciationCheck({ word }) {
     );
   }
 
+  if (envIssue) {
+    return (
+      <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+        <div className="font-semibold">🎤 Microphone unavailable here</div>
+        <p className="mt-1 text-xs leading-relaxed text-amber-100/85">{envIssue}</p>
+        {window.self !== window.top && (
+          <button
+            onClick={() => window.open(location.href, '_blank', 'noopener')}
+            className="mt-3 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold hover:bg-white/25"
+          >
+            Open in new tab ↗
+          </button>
+        )}
+      </div>
+    );
+  }
+
   const isLoading = status === 'loading';
   const isRecording = status === 'recording';
   const isTranscribing = status === 'transcribing';
   const isError = status === 'error';
+  const modelStillLoading = progress > 0 && progress < 100;
 
   const buttonLabel =
     isLoading ? `Loading model · ${progress}%`
-      : isRecording ? 'Tap to stop'
-      : isTranscribing ? 'Transcribing…'
+      : isRecording ? 'Tap to stop · speak now'
+      : isTranscribing
+        ? (modelStillLoading ? `Waiting for model · ${progress}%` : 'Transcribing…')
       : last ? 'Try again'
-      : 'Tap to record';
+      : 'Tap to record · grant mic when asked';
 
   return (
     <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
@@ -120,7 +151,7 @@ export default function PronunciationCheck({ word }) {
 
         <div className="flex-1 text-center sm:text-left">
           <div className="text-sm font-semibold">{buttonLabel}</div>
-          {isLoading && (
+          {(isLoading || modelStillLoading) && (
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
               <motion.div
                 className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-indigo-500"
@@ -130,10 +161,10 @@ export default function PronunciationCheck({ word }) {
               />
             </div>
           )}
-          {!isLoading && !last && (
+          {!isLoading && !modelStillLoading && !last && !isError && (
             <p className="mt-1 text-xs text-white/55">
               First time: ~40 MB Whisper-tiny model downloads & caches in your browser.
-              Speak the word clearly within ~2 seconds, then tap stop.
+              Speak clearly within ~2 seconds, then tap stop.
             </p>
           )}
           {isError && error && (
