@@ -97,17 +97,24 @@ will get NaN-like UI.
 
 ## Adding new words
 
-The `src/data/words.js` lists are intentionally small (40 per level) so the app
-ships fast. To grow them:
+The `src/data/words.js` corpus is the public Oxford 3000/5000 list (A1–C1)
+plus a curated C2 set, ~5,349 headwords total. Source:
+[tyypgzl/Oxford-5000-words](https://github.com/tyypgzl/Oxford-5000-words).
 
-1. Append `{ word, pos }` entries to the appropriate `WORDS[level]` array.
-2. Re-run `npm run dev` — `ALL_WORDS` is computed at module load, so HMR picks
-   it up instantly.
-3. Each entry's `id` is `${level}-${index}-${word}`. **Don't reorder** existing
-   arrays without thought: `id` is the localStorage key, so reorders move
-   user progress to different words.
+To grow or rebalance:
 
-Safer pattern when reorganizing: add new words at the **end** of the array.
+1. **Append** `{ word, pos }` entries to the relevant `WORDS[level]` array.
+2. Re-run `npm run dev` — `ALL_WORDS` is computed at module load, HMR picks
+   the change up instantly.
+3. Each entry's `id` is `${level}-${index}-${word}`. **Never reorder** existing
+   arrays: `id` is the localStorage key, so reorders relocate user progress
+   to different words.
+
+Safer pattern when reorganizing: always append at the **end** of the array.
+
+If you ever need to do a non-additive rewrite, bump the localStorage key
+(`lexquest:progress` → `:v2`) and write a one-shot migration that drops state
+records whose ID no longer resolves via `getWordById`.
 
 ## Adding new CEFR levels or stones
 
