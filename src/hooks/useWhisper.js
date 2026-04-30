@@ -266,7 +266,11 @@ export function useWhisper() {
         console.log('[LengList] Awaiting pipeline…');
         const pipe = await getPipeline();
         console.log('[LengList] Running Whisper inference…');
-        const out = await pipe(float32, { language: 'en', task: 'transcribe' });
+        // whisper-tiny.en is the English-only checkpoint — passing `language`
+        // or `task` triggers "Cannot specify task/language for an
+        // English-only model". Only multilingual variants (whisper-tiny,
+        // whisper-base, etc. without `.en`) accept those options.
+        const out = await pipe(float32);
         console.log('[LengList] Transcript:', out);
         const text = (out?.text || '').trim();
         if (!text) {
