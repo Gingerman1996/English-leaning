@@ -203,7 +203,14 @@ export function useWhisper() {
 
     setError(null);
     setTranscript('');
-    if (recording?.url) URL.revokeObjectURL(recording.url);
+    // Defer revoking the previous blob URL — if we revoke before React
+    // re-renders, the <audio> element fires one last fetch on the dead URL
+    // and the browser logs "Failed to load resource". 100ms is enough for
+    // React to swap the src.
+    if (recording?.url) {
+      const old = recording.url;
+      setTimeout(() => URL.revokeObjectURL(old), 100);
+    }
     setRecording(null);
 
     // 1. Ask for mic FIRST so the permission prompt is the very next thing
@@ -271,8 +278,13 @@ export function useWhisper() {
         // English-only model". Only multilingual variants (whisper-tiny,
         // whisper-base, etc. without `.en`) accept those options.
         const out = await pipe(float32);
-        console.log('[LengList] Transcript:', out);
-        const text = (out?.text || '').trim();
+        // Some Whisper pipelines return { text } directly; chunked variants
+        // return [{ text, timestamp }]. Handle both.
+        const rawText = Array.isArray(out)
+          ? out.map((c) => c?.text || '').join(' ')
+          : out?.text || '';
+        console.log('[LengList] Whisper returned:', JSON.stringify(out), '→ extracted text:', JSON.stringify(rawText));
+        const text = rawText.trim();
         if (!text) {
           setError('Whisper returned no text. Try recording again, a bit closer to the mic.');
           setStatus('error');
