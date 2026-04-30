@@ -98,7 +98,7 @@ will get NaN-like UI.
 ## Adding new words
 
 The `src/data/words.js` corpus is parsed from the **official American
-Oxford 3000 / 5000 PDFs** (A1–C1) plus a curated C2 set, **4,753
+Oxford 3000 / 5000 PDFs** (A1–C1) plus a curated C2 set, **4,989
 headwords** total. Source: [oxfordlearnersdictionaries.com](https://www.oxfordlearnersdictionaries.com/wordlists/oxford3000-5000).
 Words are cross-deduped — a word that appears at A1 will not also appear at
 B2, even if Oxford 5000 lists it as a B2 expansion.
