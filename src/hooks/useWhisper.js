@@ -10,34 +10,52 @@ function broadcast(p) {
   for (const fn of progressListeners) fn(p);
 }
 
+// We tried `int8` and `q8` for both encoder and decoder; both failed because
+// (a) the encoder doesn't ship an `_int8.onnx` file (404), and (b) the
+// library's WebGPU backend silently fell back to the q4 decoder which is
+// broken (MatMulNBits missing scale tensors). The combo below is the one
+// proven to load cleanly: fp32 encoder (33 MB) + fp16 decoder (59 MB).
+// Total ~92 MB on first load, cached afterwards. Larger than ideal but
+// non-negotiable until upstream fixes the q4/q8 path.
 async function getPipeline() {
   if (pipelinePromise) return pipelinePromise;
   pipelinePromise = (async () => {
     const { pipeline, env } = await import('@huggingface/transformers');
-    // Stay within the browser sandbox — no Node fs/local model loading.
     env.allowLocalModels = false;
     env.useBrowserCache = true;
-    // Force CPU/WASM backend. The WebGPU backend pulls the q4 (4-bit)
-    // decoder by default and fails to instantiate it (missing MatMulNBits
-    // scale tensors). Xenova/whisper-tiny.en doesn't ship a real `_q8`
-    // variant — just `_int8` (30 MB) and `_quantized` (uint8, 30 MB). We
-    // pick `int8` for the decoder explicitly, which ONNX Runtime web loads
-    // cleanly without quantization-scheme drama.
+    // Pre-disable WebGPU at the env level — `device: 'wasm'` in pipeline
+    // options wasn't enough; the WebGPU bundle was still being loaded in
+    // some code paths.
+    if (env.backends?.onnx?.wasm) {
+      env.backends.onnx.wasm.numThreads = 1;
+    }
     return pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
       progress_callback: broadcast,
       device: 'wasm',
       dtype: {
-        encoder_model: 'int8',          // 10 MB
-        decoder_model_merged: 'int8',   // 30 MB
+        encoder_model: 'fp32',
+        decoder_model_merged: 'fp16',
       },
     });
   })().catch((e) => {
-    // Reset so the user can retry without reloading the page if the first
-    // load fails (e.g. transient network error).
     pipelinePromise = null;
     throw e;
   });
   return pipelinePromise;
+}
+
+// Lets the UI offer a "Clear cached model" button. Wipes the entries in the
+// browser's Cache API that transformers.js wrote, then resets the singleton
+// so the next request re-downloads.
+export async function clearWhisperCache() {
+  pipelinePromise = null;
+  if (typeof caches === 'undefined') return;
+  const names = await caches.keys();
+  for (const name of names) {
+    if (name.startsWith('transformers-cache') || name.includes('huggingface')) {
+      await caches.delete(name);
+    }
+  }
 }
 
 // Decode an arbitrary audio Blob to a 16 kHz mono Float32Array — the format

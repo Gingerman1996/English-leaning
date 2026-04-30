@@ -5,6 +5,7 @@ import {
   whisperAvailable,
   micEnvironmentIssue,
   preloadWhisper,
+  clearWhisperCache,
 } from '../hooks/useWhisper.js';
 import { scorePronunciation, scoreLabel } from '../utils/phonetics.js';
 import { speak, ttsAvailable } from '../hooks/useSpeech.js';
@@ -168,7 +169,20 @@ export default function PronunciationCheck({ word }) {
             </p>
           )}
           {isError && error && (
-            <p className="mt-1 text-xs text-rose-200">{error}</p>
+            <div className="mt-1 text-xs text-rose-200">
+              <p>{error}</p>
+              {/quantization|MatMulNBits|session|onnx|404/i.test(error) && (
+                <button
+                  onClick={async () => {
+                    await clearWhisperCache();
+                    location.reload();
+                  }}
+                  className="mt-2 rounded-full bg-rose-500/30 px-3 py-1 text-[11px] font-semibold hover:bg-rose-500/40"
+                >
+                  Clear cached model & reload
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
