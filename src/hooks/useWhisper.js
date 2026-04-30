@@ -17,19 +17,26 @@ async function getPipeline() {
     // Stay within the browser sandbox — no Node fs/local model loading.
     env.allowLocalModels = false;
     env.useBrowserCache = true;
-    // Pin dtype to q8 explicitly. The library's default for Whisper picks the
-    // q4 (4-bit) decoder variant which fails to load on ONNX Runtime web with:
-    //   "TransposeDQWeightsForMatMulNBits Missing required scale:
-    //    model.decoder.embed_tokens.weight_merged_0_scale"
-    // q8 is well-tested, ~same size, and works across all browsers.
+    // Force CPU/WASM backend. The WebGPU backend pulls the q4 (4-bit)
+    // decoder by default and fails to instantiate it (missing MatMulNBits
+    // scale tensors). Xenova/whisper-tiny.en doesn't ship a real `_q8`
+    // variant — just `_int8` (30 MB) and `_quantized` (uint8, 30 MB). We
+    // pick `int8` for the decoder explicitly, which ONNX Runtime web loads
+    // cleanly without quantization-scheme drama.
     return pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny.en', {
       progress_callback: broadcast,
+      device: 'wasm',
       dtype: {
-        encoder_model: 'fp32',
-        decoder_model_merged: 'q8',
+        encoder_model: 'int8',          // 10 MB
+        decoder_model_merged: 'int8',   // 30 MB
       },
     });
-  })();
+  })().catch((e) => {
+    // Reset so the user can retry without reloading the page if the first
+    // load fails (e.g. transient network error).
+    pipelinePromise = null;
+    throw e;
+  });
   return pipelinePromise;
 }
 
