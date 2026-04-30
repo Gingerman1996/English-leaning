@@ -12,7 +12,7 @@ import { buildQueue, isLearned, summarize } from './utils/srs.js';
 const SETTINGS = { newPerDay: 12, max: 80 };
 
 export default function App() {
-  const [progress, setProgress] = useLocalStorage('lexquest:progress', {});
+  const [progress, setProgress] = useLocalStorage('lenglist:progress', {});
   const [tab, setTab] = useState('home');
 
   const summary = useMemo(() => summarize(progress), [progress]);
@@ -85,7 +85,7 @@ export default function App() {
       </main>
 
       <footer className="mx-auto max-w-6xl px-5 pb-10 pt-2 text-center text-xs text-white/40">
-        LexQuest · Free Dictionary API · all progress lives in your browser
+        LengList · Free Dictionary API · on-device Whisper · all progress lives in your browser
       </footer>
     </div>
   );

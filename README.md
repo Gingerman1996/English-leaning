@@ -1,4 +1,4 @@
-# LexQuest — Beautiful English Vocabulary
+# LengList — Beautiful English Vocabulary
 
 Gamified English vocabulary learning app with **CEFR levels**, **Anki-style spaced repetition**, and the **Mind Stones** progression system. Built with React + Vite + Tailwind + Framer Motion.
 
@@ -14,6 +14,8 @@ Gamified English vocabulary learning app with **CEFR levels**, **Anki-style spac
 - **Anki-style SRS** — simplified SM-2: cards have ease, interval, repetitions, and lapses; reviewer rates recall on a 0–3 scale (Again / Hard / Good / Easy) and the next due date is computed accordingly.
 - **Live dictionary entries** — phonetic, audio playback, multiple definitions, examples, synonyms, all fetched on demand and cached in memory.
 - **Beautiful, animated UI** — glassmorphism, floating cards, animated stones, gradient meters, all powered by Framer Motion.
+- **🎤 On-device pronunciation scoring** — Whisper-tiny.en runs in your browser via [Transformers.js](https://huggingface.co/docs/transformers.js). Tap the mic, speak the word, get a 0–100 score with stars. ~40 MB model is downloaded once and cached. Zero audio leaves your device.
+- **🗣️ Read-aloud (TTS)** — every example sentence and headword has a button that triggers browser SpeechSynthesis.
 - **Local-only progress** — everything saved in `localStorage`, no account, no backend.
 - **Docker-ready** — multi-stage Dockerfile with a `dev` profile (Vite HMR) and `prod` profile (nginx).
 
@@ -43,8 +45,8 @@ docker compose --profile dev up --build
 ### One-shot Docker build
 
 ```bash
-docker build -t lexquest .
-docker run --rm -p 8080:80 lexquest
+docker build -t lenglist .
+docker run --rm -p 8080:80 lenglist
 ```
 
 ## Project layout
@@ -59,8 +61,11 @@ src/
 │   └── levels.js            # CEFR metadata + Mind Stones definitions
 ├── hooks/
 │   ├── useDictionary.js     # Free Dictionary API + in-memory cache
-│   └── useStorage.js        # tiny useLocalStorage wrapper
+│   ├── useSpeech.js         # SpeechSynthesis (TTS) wrapper
+│   ├── useStorage.js        # tiny useLocalStorage wrapper
+│   └── useWhisper.js        # Transformers.js Whisper-tiny.en + MediaRecorder
 ├── utils/
+│   ├── phonetics.js         # Soundex + Levenshtein scoring
 │   └── srs.js               # SM-2 simplified spaced repetition
 └── components/
     ├── Header.jsx
@@ -68,7 +73,8 @@ src/
     ├── LevelChef.jsx        # current CEFR tier with progress
     ├── MindStones.jsx       # six animated gem cards
     ├── ReviewSession.jsx    # SRS review queue
-    ├── FlashCard.jsx        # individual flashcard w/ live def
+    ├── FlashCard.jsx        # flashcard w/ live def + pronunciation
+    ├── PronunciationCheck.jsx  # 🎤 mic + Whisper + scoring UI
     ├── WordExplorer.jsx     # browse & mark words by level
     ├── StatCard.jsx
     └── Logo.jsx
@@ -99,7 +105,3 @@ const SETTINGS = { newPerDay: 12, max: 80 };
 ## Deploying
 
 Build outputs static assets to `dist/`. They're framework-agnostic — drop them on any static host (Netlify, Vercel, S3, GitHub Pages, nginx, etc.). The included `nginx.conf` already handles SPA fallback and asset caching.
-
-## License
-
-MIT.

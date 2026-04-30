@@ -1,5 +1,9 @@
 import { motion } from 'framer-motion';
 
+// LengList — three pillars of the brand:
+//   • bold "L" letterform → language / Leng
+//   • three horizontal bars → the list of words to learn
+//   • a sound-wave dot → audio pronunciation, the new core feature
 export default function Logo({ size = 36 }) {
   return (
     <motion.div
@@ -11,29 +15,38 @@ export default function Logo({ size = 36 }) {
     >
       <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden>
         <defs>
-          <linearGradient id="logoGrad" x1="0" x2="1" y1="0" y2="1">
+          <linearGradient id="ll-grad" x1="0" x2="1" y1="0" y2="1">
             <stop offset="0%" stopColor="#a855f7" />
-            <stop offset="50%" stopColor="#6366f1" />
+            <stop offset="55%" stopColor="#6366f1" />
             <stop offset="100%" stopColor="#22d3ee" />
           </linearGradient>
+          <linearGradient id="ll-shine" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="white" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="white" stopOpacity="0" />
+          </linearGradient>
         </defs>
-        <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#logoGrad)" />
+
+        <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#ll-grad)" />
+        <rect x="2" y="2" width="60" height="32" rx="16" fill="url(#ll-shine)" />
+
+        {/* Bold L */}
         <path
-          d="M22 18h20a4 4 0 0 1 4 4v20a4 4 0 0 1-4 4h-9l-6 5v-5h-5a4 4 0 0 1-4-4V22a4 4 0 0 1 4-4z"
-          fill="white"
-          opacity="0.95"
+          d="M 16 14 L 16 46 L 28 46"
+          stroke="white"
+          strokeWidth="5.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
         />
-        <text
-          x="50%"
-          y="56%"
-          textAnchor="middle"
-          fontFamily="Plus Jakarta Sans, sans-serif"
-          fontWeight="800"
-          fontSize="18"
-          fill="#3b3fe8"
-        >
-          Lx
-        </text>
+
+        {/* List bars (descending length = the user's vocabulary growing) */}
+        <line x1="34" y1="20" x2="50" y2="20" stroke="white" strokeWidth="3.5" strokeLinecap="round" opacity="0.95" />
+        <line x1="34" y1="30" x2="46" y2="30" stroke="white" strokeWidth="3.5" strokeLinecap="round" opacity="0.78" />
+        <line x1="34" y1="40" x2="42" y2="40" stroke="white" strokeWidth="3.5" strokeLinecap="round" opacity="0.6" />
+
+        {/* Sound-wave dot — the new pronunciation feature */}
+        <circle cx="50" cy="40" r="2.6" fill="#fef3c7" />
+        <circle cx="50" cy="40" r="5.5" fill="none" stroke="#fef3c7" strokeWidth="1.2" opacity="0.55" />
       </svg>
     </motion.div>
   );

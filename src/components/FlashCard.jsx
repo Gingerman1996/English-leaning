@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDictionary, playAudio } from '../hooks/useDictionary.js';
 import { LEVEL_META } from '../data/levels.js';
+import { speak, ttsAvailable } from '../hooks/useSpeech.js';
+import PronunciationCheck from './PronunciationCheck.jsx';
 
 function LevelChip({ code }) {
   const meta = LEVEL_META.find((l) => l.code === code);
@@ -10,6 +12,26 @@ function LevelChip({ code }) {
     >
       {meta.emoji} {code}
     </span>
+  );
+}
+
+function ExampleLine({ text }) {
+  if (!text) return null;
+  return (
+    <div className="mt-2 flex items-start gap-2 text-sm text-white/65">
+      <span className="text-white/40">“</span>
+      <p className="flex-1 italic">{text}</p>
+      <span className="text-white/40">”</span>
+      {ttsAvailable() && (
+        <button
+          onClick={() => speak(text)}
+          className="ml-1 shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/80 hover:bg-white/15"
+          title="Read this example aloud"
+        >
+          🔊
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -42,14 +64,26 @@ export default function FlashCard({ word, revealed, onReveal, onRate, onSkip, qu
         <div className="relative">
           <div className="mb-4 flex items-center justify-between">
             <LevelChip code={word.level} />
-            {data?.audio && (
-              <button
-                onClick={() => playAudio(data.audio)}
-                className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
-              >
-                <span>🔊</span> play
-              </button>
-            )}
+            <div className="flex items-center gap-1.5">
+              {data?.audio && (
+                <button
+                  onClick={() => playAudio(data.audio)}
+                  className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
+                  title="Native audio (Free Dictionary API)"
+                >
+                  <span>🔊</span> native
+                </button>
+              )}
+              {ttsAvailable() && (
+                <button
+                  onClick={() => speak(word.word)}
+                  className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
+                  title="Read aloud (browser TTS)"
+                >
+                  <span>🗣️</span> say
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-baseline gap-3">
@@ -82,7 +116,7 @@ export default function FlashCard({ word, revealed, onReveal, onRate, onSkip, qu
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="mt-6"
+                className="mt-6 space-y-5"
               >
                 {loading && <p className="text-white/55">Looking up Oxford-style entry…</p>}
                 {error && (
@@ -104,9 +138,7 @@ export default function FlashCard({ word, revealed, onReveal, onRate, onSkip, qu
                           {d.pos}
                         </div>
                         <p className="text-white/90">{d.text}</p>
-                        {d.example && (
-                          <p className="mt-2 text-sm italic text-white/60">“{d.example}”</p>
-                        )}
+                        <ExampleLine text={d.example} />
                         {d.synonyms.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {d.synonyms.map((s) => (
@@ -121,7 +153,9 @@ export default function FlashCard({ word, revealed, onReveal, onRate, onSkip, qu
                   </div>
                 )}
 
-                <div className="mt-6 grid grid-cols-4 gap-2">
+                <PronunciationCheck word={word.word} />
+
+                <div className="grid grid-cols-4 gap-2">
                   {[
                     { label: 'Again', sub: 'forgot', tone: 'rose', rating: 0 },
                     { label: 'Hard', sub: 'tough', tone: 'amber', rating: 1 },

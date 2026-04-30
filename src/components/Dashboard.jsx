@@ -87,8 +87,9 @@ function Hero({ learnedCount, due, onStartReview, onExplore }) {
             Build a vocabulary <span className="shimmer-text">worth remembering.</span>
           </h1>
           <p className="mt-4 max-w-lg text-white/70">
-            LexQuest pairs Anki-style spaced repetition with the Common European Framework so you
-            always know exactly how far you've come — and what's next.
+            LengList pairs Anki-style spaced repetition with the Common European Framework so you
+            always know how far you've come — and now scores your pronunciation with an on-device
+            Whisper model.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <button onClick={onStartReview} className="btn-primary">

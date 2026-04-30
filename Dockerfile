@@ -1,11 +1,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Multi-stage Dockerfile for LexQuest.
+# Multi-stage Dockerfile for LengList.
 # - "deps" installs node_modules with caching.
 # - "build" produces the static Vite output.
 # - "dev"   runs `vite` for hot-reload development.
 # - "prod"  serves the built assets with nginx (the default target).
-# Build:  docker build -t lexquest .
-# Run:    docker run -p 8080:80 lexquest
+# Build:  docker build -t lenglist .
+# Run:    docker run -p 8080:80 lenglist
 # ─────────────────────────────────────────────────────────────────────────────
 
 FROM node:20-alpine AS deps

@@ -1,17 +1,17 @@
 ---
-name: lexquest-vocab-coach
-description: Coach a user through learning English vocabulary with the LexQuest stack — CEFR levels, Anki-style spaced repetition, and Mind Stones gamification. Use when the user wants to add words to their study queue, plan a review session, interpret their progress, or extend the LexQuest codebase. The skill assumes the user is running the LexQuest React app locally (npm run dev) or in Docker, with progress persisted in localStorage under the key `lexquest:progress`.
+name: lenglist-vocab-coach
+description: Coach a user through learning English vocabulary with the LengList stack — CEFR levels, Anki-style spaced repetition, and Mind Stones gamification. Use when the user wants to add words to their study queue, plan a review session, interpret their progress, or extend the LengList codebase. The skill assumes the user is running the LengList React app locally (npm run dev) or in Docker, with progress persisted in localStorage under the key `lenglist:progress`.
 ---
 
-# LexQuest Vocab Coach
+# LengList Vocab Coach
 
-A focused skill for working with the LexQuest vocabulary trainer.
+A focused skill for working with the LengList vocabulary trainer.
 
 ## When to use this skill
 
 Trigger when the user is:
 
-- **Studying** with LexQuest and wants you to explain a result, recommend a
+- **Studying** with LengList and wants you to explain a result, recommend a
   daily target, or pick a CEFR level to focus on.
 - **Extending** the app — adding word lists, tweaking the SRS algorithm,
   adjusting Mind Stone thresholds, or restyling the UI.
@@ -57,7 +57,7 @@ A word becomes **learned** when `repetitions ≥ 2` and `ease ≥ 2.0`. The
 Inspect the card state in localStorage:
 
 ```js
-JSON.parse(localStorage.getItem('lexquest:progress'))['<id>']
+JSON.parse(localStorage.getItem('lenglist:progress'))['<id>']
 ```
 
 Stuck signals: `lapses > 3`, `ease < 1.6`. Recommend:
@@ -119,13 +119,13 @@ won't move the needle until reps reaches 2 with ease ≥ 2.0.
 **Export current progress as JSON** (in browser console):
 
 ```js
-copy(JSON.stringify(JSON.parse(localStorage['lexquest:progress'])))
+copy(JSON.stringify(JSON.parse(localStorage['lenglist:progress'])))
 ```
 
 **Reset progress completely**:
 
 ```js
-localStorage.removeItem('lexquest:progress'); location.reload();
+localStorage.removeItem('lenglist:progress'); location.reload();
 ```
 
 **Compute current level from a count**:
@@ -137,6 +137,7 @@ levelForLearnedCount(640).code; // 'A2'
 
 ## Out of scope
 
-- Speech-to-text / pronunciation grading
-- Spaced repetition for full sentences (LexQuest is word-level by design)
+- Spaced repetition for full sentences (LengList is word-level by design)
 - Social / leaderboard features (the project is intentionally local-only)
+- Cloud pronunciation services (e.g. Azure Speech) — pronunciation runs
+  on-device via Whisper-tiny.en through Transformers.js

@@ -17,9 +17,9 @@ export default function Header({ tab, onTabChange, due }) {
         >
           <Logo size={36} />
           <div>
-            <div className="heading text-lg leading-none">LexQuest</div>
+            <div className="heading text-lg leading-none">LengList</div>
             <div className="text-[11px] uppercase tracking-[0.2em] text-white/50">
-              vocabulary · level · stones
+              learn · listen · speak
             </div>
           </div>
         </button>

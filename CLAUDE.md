@@ -1,11 +1,11 @@
-# CLAUDE.md — LexQuest project guide
+# CLAUDE.md — LengList project guide
 
 This file is the contract for any AI assistant (Claude Code, Cursor, etc.) working
-on the LexQuest codebase. Read it before making changes.
+on the LengList codebase. Read it before making changes.
 
 ## What this project is
 
-LexQuest is a **client-only React vocabulary trainer** built around three ideas:
+LengList is a **client-only React vocabulary trainer** built around four ideas:
 
 1. **CEFR levels** (A1 → C2) — the user's level is computed from the count of
    "learned" words, with cooking-themed titles ("Apprentice Chef" → "Master Chef").
@@ -13,9 +13,12 @@ LexQuest is a **client-only React vocabulary trainer** built around three ideas:
    `src/utils/srs.js` schedules reviews. Cards have ease / interval / reps / lapses.
 3. **Mind Stones** — six legendary stones unlocked at 10, 50, 200, 500, 1500, 4000
    learned words. Pure gamification UI on top of the same `learnedCount`.
+4. **On-device pronunciation scoring** — Whisper-tiny.en running in the browser
+   via Transformers.js, with a phonetic-similarity scorer in
+   `src/utils/phonetics.js`. No audio ever leaves the device.
 
 There is **no backend** and **no auth**. All progress lives in `localStorage`
-under the key `lexquest:progress`. Live dictionary lookups go to
+under the key `lenglist:progress`. Live dictionary lookups go to
 `https://api.dictionaryapi.dev/api/v2/entries/en/<word>` with an in-memory cache.
 
 ## Stack
@@ -51,6 +54,8 @@ docker compose --profile dev  up --build   # vite HMR on :5173
 | Change SRS math (interval growth, ease bounds, "learned" rule) | `src/utils/srs.js` |
 | Tweak the daily queue size / new-cards-per-day | `SETTINGS` in `src/App.jsx` |
 | Replace the dictionary source | `src/hooks/useDictionary.js` |
+| Swap the speech model (e.g. whisper-base) | `src/hooks/useWhisper.js` (model id) |
+| Tune the pronunciation scoring rules | `src/utils/phonetics.js` |
 | Restyle the flashcard | `src/components/FlashCard.jsx` |
 | Add a new top-level tab | `src/components/Header.jsx` (TABS array) + `App.jsx` switch |
 
@@ -82,8 +87,34 @@ docker compose --profile dev  up --build   # vite HMR on :5173
 - `summarize(progress)` — aggregate stats for the dashboard.
 
 If you change the schema of `state`, also bump the localStorage key (e.g.
-`lexquest:progress:v2`) and migrate the old entries — otherwise existing users
+`lenglist:progress:v2`) and migrate the old entries — otherwise existing users
 will get NaN-like UI.
+
+## Pronunciation pipeline
+
+Files: `src/hooks/useWhisper.js`, `src/components/PronunciationCheck.jsx`,
+`src/utils/phonetics.js`. The flow is:
+
+1. `useWhisper` lazy-loads the `Xenova/whisper-tiny.en` pipeline via
+   `@huggingface/transformers`. The 40 MB model is fetched from
+   `huggingface.co` and cached by the browser's Cache API. A module-level
+   singleton `pipelinePromise` ensures it's loaded once per session.
+2. `MediaRecorder` captures audio as webm/opus. On stop, the blob is decoded
+   via `AudioContext.decodeAudioData`, mixed to mono, and resampled to 16 kHz
+   with `OfflineAudioContext`.
+3. The Float32Array is passed to the Whisper pipeline, which returns text.
+4. `scorePronunciation(target, heard)` in `phonetics.js` returns 0–100 using
+   the best of (exact match, Soundex match, Levenshtein-derived similarity)
+   across each word in the transcript.
+
+Vite needs `optimizeDeps.exclude: ['@huggingface/transformers']` (already
+set) — pre-bundling breaks the dynamic ONNX runtime loader. The transformers
+chunk is also split out via `manualChunks` so the initial bundle stays light;
+it's only fetched when the user clicks the mic.
+
+**Don't** introduce a server proxy for model files — the model URL is
+configured to go directly to the HF CDN and benefits from cross-origin
+caching. Adding a proxy would force every user to re-download.
 
 ## Free Dictionary API gotchas
 
@@ -115,7 +146,7 @@ To grow or rebalance:
 Safer pattern when reorganizing: always append at the **end** of the array.
 
 If you ever need to do a non-additive rewrite, bump the localStorage key
-(`lexquest:progress` → `:v2`) and write a one-shot migration that drops state
+(`lenglist:progress` → `:v2`) and write a one-shot migration that drops state
 records whose ID no longer resolves via `getWordById`.
 
 ## Adding new CEFR levels or stones

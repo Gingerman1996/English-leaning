@@ -1,15 +1,16 @@
 {
-  "name": "english-learning",
+  "name": "lenglist",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Beautiful, gamified English vocabulary learning app with CEFR levels, Anki-style spaced repetition, and Mind Stones progression.",
+  "description": "LengList — beautiful, gamified English vocabulary trainer. CEFR levels, Anki-style spaced repetition, Mind Stones, and on-device Whisper pronunciation scoring.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "framer-motion": "^11.11.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
