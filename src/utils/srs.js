@@ -52,10 +52,13 @@ export function review(state, rating) {
   };
 }
 
-// "Learned" = a card with at least 2 successful reps & ease >=2.0.
-// Mirrors Anki's idea of "young" vs "mature" but kept compact.
+// "Learned" = the user has recalled this word at least once without lapsing.
+// Anki technically requires more reps to "graduate" a card, but for our UX
+// (CEFR tier + Mind Stones tick up immediately when you nail a new word) the
+// looser threshold is much more rewarding. Rating "Again" resets repetitions
+// to 0, so failed cards correctly drop out of the learned set.
 export function isLearned(state) {
-  return state && state.repetitions >= 2 && state.ease >= 2.0;
+  return state && state.repetitions >= 1 && state.ease >= 2.0;
 }
 
 export function isMature(state) {
