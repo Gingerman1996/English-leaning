@@ -46,13 +46,43 @@ function isMostlyEnglish(text) {
   return total > 0 && latin / total >= 0.85;
 }
 
-async function fetchGoogleBooks(word, signal) {
+function snippetWordCount(snippet) {
+  return snippet
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&[a-z#0-9]+;/gi, ' ')
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
+
+// Match the example difficulty to the learner's level. For A1/A2 we route
+// Wikipedia search to simple.wikipedia.org — same API, same CORS, but
+// articles are written in basic English aimed at ESL readers and children.
+// We also cap how long a snippet can be: a 60-word sentence buried in a
+// philosophy text isn't useful for an A1 student who's just met "happy".
+function complexityForLevel(level) {
+  switch (level) {
+    case 'A1':
+      return { wikiHost: 'simple.wikipedia.org', maxSnippetWords: 28, label: 'simple' };
+    case 'A2':
+      return { wikiHost: 'simple.wikipedia.org', maxSnippetWords: 34, label: 'simple' };
+    case 'B1':
+      return { wikiHost: 'en.wikipedia.org', maxSnippetWords: 45, label: 'standard' };
+    case 'B2':
+      return { wikiHost: 'en.wikipedia.org', maxSnippetWords: 65, label: 'standard' };
+    case 'C1':
+    case 'C2':
+    default:
+      return { wikiHost: 'en.wikipedia.org', maxSnippetWords: Infinity, label: 'advanced' };
+  }
+}
+
+async function fetchGoogleBooks(word, complexity, signal) {
   // Quote the word so Books returns matches with the exact lemma rather than
   // weakly related volumes. `printType=books` filters out magazines.
   // Increase maxResults so we have headroom after filtering out non-English
   // hits — Google's langRestrict alone lets a lot of mixed-language scans
   // through.
-  const url = `https://www.googleapis.com/books/v1/volumes?q=%22${encodeURIComponent(word)}%22&maxResults=20&printType=books&langRestrict=en`;
+  const url = `https://www.googleapis.com/books/v1/volumes?q=%22${encodeURIComponent(word)}%22&maxResults=30&printType=books&langRestrict=en`;
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`Books HTTP ${res.status}`);
   const json = await res.json();
@@ -69,6 +99,9 @@ async function fetchGoogleBooks(word, signal) {
       // Reject snippets that are mostly non-English — common when a Thai
       // textbook has a single English example sentence.
       if (!isMostlyEnglish(snippet)) return null;
+      // Drop snippets that are too long for the learner's level — beginners
+      // shouldn't drown in a 60-word academic sentence.
+      if (snippetWordCount(snippet) > complexity.maxSnippetWords) return null;
       // Skip snippets that don't actually contain the word (Google sometimes
       // returns matches against author names or category metadata).
       const re = new RegExp(`\\b${word}\\w*\\b`, 'i');
@@ -88,12 +121,14 @@ async function fetchGoogleBooks(word, signal) {
     .slice(0, 5);
 }
 
-async function fetchWikipedia(word, signal) {
+async function fetchWikipedia(word, complexity, signal) {
   // `origin=*` enables CORS. `srsearch` does fulltext search across all
-  // articles and returns highlighted snippets.
-  const url = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+  // articles and returns highlighted snippets. Host varies by level:
+  // simple.wikipedia.org for A1/A2, en.wikipedia.org for B1+.
+  const host = complexity.wikiHost;
+  const url = `https://${host}/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
     `"${word}"`
-  )}&format=json&origin=*&srprop=snippet&srlimit=10`;
+  )}&format=json&origin=*&srprop=snippet&srlimit=15`;
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`Wiki HTTP ${res.status}`);
   const json = await res.json();
@@ -106,18 +141,21 @@ async function fetchWikipedia(word, signal) {
       if (r.title.toLowerCase() === word.toLowerCase()) return null;
       // Reject snippets that aren't predominantly English text.
       if (!isMostlyEnglish(r.snippet)) return null;
+      // Cap snippet length to the learner's level.
+      if (snippetWordCount(r.snippet) > complexity.maxSnippetWords) return null;
       return {
         source: 'wikipedia',
         snippet: r.snippet,
         title: r.title,
-        link: `https://en.wikipedia.org/wiki/${encodeURIComponent(r.title.replace(/ /g, '_'))}`,
+        link: `https://${host}/wiki/${encodeURIComponent(r.title.replace(/ /g, '_'))}`,
+        host,
       };
     })
     .filter(Boolean)
     .slice(0, 5);
 }
 
-export function useContextExamples(word) {
+export function useContextExamples(word, level) {
   const [data, setData] = useState({ books: [], wiki: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -131,7 +169,10 @@ export function useContextExamples(word) {
       setData({ books: [], wiki: [], skipped: true });
       return;
     }
-    const key = word.toLowerCase();
+    const complexity = complexityForLevel(level);
+    // Cache key includes level because the snippet length cap and Wikipedia
+    // host change the result set.
+    const key = `${level || 'any'}:${word.toLowerCase()}`;
     if (cache.has(key)) {
       setData(cache.get(key));
       return;
@@ -142,13 +183,14 @@ export function useContextExamples(word) {
     setError(null);
 
     Promise.allSettled([
-      fetchGoogleBooks(word, ctrl.signal),
-      fetchWikipedia(word, ctrl.signal),
+      fetchGoogleBooks(word, complexity, ctrl.signal),
+      fetchWikipedia(word, complexity, ctrl.signal),
     ])
       .then(([booksRes, wikiRes]) => {
         const result = {
           books: booksRes.status === 'fulfilled' ? booksRes.value : [],
           wiki: wikiRes.status === 'fulfilled' ? wikiRes.value : [],
+          complexity,
         };
         cache.set(key, result);
         setData(result);
@@ -159,7 +201,7 @@ export function useContextExamples(word) {
       .finally(() => setLoading(false));
 
     return () => ctrl.abort();
-  }, [word]);
+  }, [word, level]);
 
   return { data, loading, error };
 }

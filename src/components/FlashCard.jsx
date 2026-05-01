@@ -154,7 +154,7 @@ export default function FlashCard({ word, revealed, onReveal, onRate, onSkip, qu
                   </div>
                 )}
 
-                <ContextExamples word={word.word} />
+                <ContextExamples word={word.word} level={word.level} />
 
                 <PronunciationCheck word={word.word} />
 

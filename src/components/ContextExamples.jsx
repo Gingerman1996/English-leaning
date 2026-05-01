@@ -98,8 +98,8 @@ function ContextItem({ item }) {
   );
 }
 
-export default function ContextExamples({ word }) {
-  const { data, loading, error } = useContextExamples(word);
+export default function ContextExamples({ word, level }) {
+  const { data, loading, error } = useContextExamples(word, level);
   const [tab, setTab] = useState('books');
 
   const totalCount = data.books.length + data.wiki.length;
@@ -142,6 +142,11 @@ export default function ContextExamples({ word }) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs uppercase tracking-[0.18em] text-white/55">
           Real-world usage
+          {data.complexity?.label && (
+            <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] normal-case tracking-normal text-white/65">
+              {level} · {data.complexity.label}
+            </span>
+          )}
         </span>
         <div className="flex gap-1 text-xs">
           <button
