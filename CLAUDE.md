@@ -54,6 +54,7 @@ docker compose --profile dev  up --build   # vite HMR on :5173
 | Change SRS math (interval growth, ease bounds, "learned" rule) | `src/utils/srs.js` |
 | Tweak the daily queue size / new-cards-per-day | `SETTINGS` in `src/App.jsx` |
 | Replace the dictionary source | `src/hooks/useDictionary.js` |
+| Replace the real-world examples source | `src/hooks/useContextExamples.js` |
 | Swap the speech model (e.g. whisper-base) | `src/hooks/useWhisper.js` (model id) |
 | Tune the pronunciation scoring rules | `src/utils/phonetics.js` |
 | Restyle the flashcard | `src/components/FlashCard.jsx` |

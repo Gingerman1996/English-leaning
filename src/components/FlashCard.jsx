@@ -3,6 +3,7 @@ import { useDictionary, playAudio } from '../hooks/useDictionary.js';
 import { LEVEL_META } from '../data/levels.js';
 import { speak, ttsAvailable } from '../hooks/useSpeech.js';
 import PronunciationCheck from './PronunciationCheck.jsx';
+import ContextExamples from './ContextExamples.jsx';
 
 function LevelChip({ code }) {
   const meta = LEVEL_META.find((l) => l.code === code);
@@ -152,6 +153,8 @@ export default function FlashCard({ word, revealed, onReveal, onRate, onSkip, qu
                     ))}
                   </div>
                 )}
+
+                <ContextExamples word={word.word} />
 
                 <PronunciationCheck word={word.word} />
 

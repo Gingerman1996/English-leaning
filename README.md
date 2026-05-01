@@ -14,8 +14,9 @@ Gamified English vocabulary learning app with **CEFR levels**, **Anki-style spac
 - **Anki-style SRS** — simplified SM-2: cards have ease, interval, repetitions, and lapses; reviewer rates recall on a 0–3 scale (Again / Hard / Good / Easy) and the next due date is computed accordingly.
 - **Live dictionary entries** — phonetic, audio playback, multiple definitions, examples, synonyms, all fetched on demand and cached in memory.
 - **Beautiful, animated UI** — glassmorphism, floating cards, animated stones, gradient meters, all powered by Framer Motion.
-- **🎤 On-device pronunciation scoring** — Whisper-tiny.en runs in your browser via [Transformers.js](https://huggingface.co/docs/transformers.js). Tap the mic, speak the word, get a 0–100 score with stars. ~40 MB model is downloaded once and cached. Zero audio leaves your device.
+- **🎤 On-device pronunciation scoring** — Whisper-tiny.en runs in your browser via [Transformers.js](https://huggingface.co/docs/transformers.js). Tap the mic, speak the word, get a 0–100 score with stars. ~92 MB model is downloaded once and cached. Zero audio leaves your device.
 - **🗣️ Read-aloud (TTS)** — every example sentence and headword has a button that triggers browser SpeechSynthesis.
+- **📚 Real-world usage examples** — every flashcard pulls live snippets from [Google Books](https://developers.google.com/books) (novels, textbooks, journals) and [Wikipedia](https://en.wikipedia.org/w/api.php) so you can see the word in actual published context, with a link back to the source.
 - **Local-only progress** — everything saved in `localStorage`, no account, no backend.
 - **Docker-ready** — multi-stage Dockerfile with a `dev` profile (Vite HMR) and `prod` profile (nginx).
 
