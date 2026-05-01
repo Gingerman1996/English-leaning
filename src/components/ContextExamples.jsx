@@ -105,6 +105,13 @@ export default function ContextExamples({ word }) {
   const totalCount = data.books.length + data.wiki.length;
   const items = tab === 'books' ? data.books : data.wiki;
 
+  // Stop-words / 1-2 letter words don't produce useful context — Wikipedia
+  // returns the article about the letter itself and Books returns garbled
+  // OCR'd polylingual scans. Hide the panel entirely for these.
+  if (data.skipped) {
+    return null;
+  }
+
   if (loading && totalCount === 0) {
     return (
       <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
@@ -123,7 +130,7 @@ export default function ContextExamples({ word }) {
           Real-world usage
         </div>
         <p className="text-sm text-white/55">
-          No public-source matches for “{word}”. Rare words may not turn up in books or Wikipedia.
+          No English public-source matches for “{word}”. Very rare or specialized words may not turn up.
           {error && <span className="block text-amber-200/80 mt-1">{error}</span>}
         </p>
       </div>
