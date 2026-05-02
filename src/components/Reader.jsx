@@ -135,12 +135,12 @@ export default function Reader({ progress, setProgress }) {
 
   const inArticle = !!(selectedTitle && (article || loadingArticle));
 
-  return (
-    <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
-      <ReaderRail items={railItems} active={panel} onChange={changePanel} />
-
-      <div className="min-w-0 flex-1 space-y-6">
-        {inArticle ? (
+  // Reading the article: rail on the left for quick nav, article on the right.
+  if (inArticle) {
+    return (
+      <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
+        <ReaderRail items={railItems} active={panel} onChange={changePanel} />
+        <div className="min-w-0 flex-1 space-y-6">
           <ArticleView
             article={article}
             loading={loadingArticle}
@@ -152,53 +152,97 @@ export default function Reader({ progress, setProgress }) {
             source={source}
             onBack={() => setSelectedTitle(null)}
           />
-        ) : (
-          <>
-            {panel === 'search' && (
-              <SearchPanel
-                query={query}
-                setQuery={setQuery}
-                onSubmit={onSubmit}
-                pickSuggestion={pickSuggestion}
-                source={source}
-                setSource={setSource}
-                chosenLevel={chosenLevel}
-                setChosenLevel={setChosenLevel}
-                currentLevel={currentLevel}
-                settings={settings}
-                reading={reading}
-                sourceError={sourceError}
-                submitted={submitted}
-                results={results}
-                searching={searching}
-                onPickResult={(title) => setSelectedTitle(title)}
-              />
-            )}
-
-            {panel === 'lookup' && (
-              <LookupPanel
-                progress={progress}
-                setProgress={setProgress}
-                reading={reading}
-                seedWord={seedLookup}
-                consumeSeed={() => setSeedLookup('')}
-              />
-            )}
-
-            {panel === 'history' && (
-              <HistoryPanel
-                reading={reading}
-                onReopen={reopenArticle}
-              />
-            )}
-
-            {panel === 'progress' && (
-              <ProgressPanel reading={reading} currentLevel={currentLevel} />
-            )}
-          </>
-        )}
+        </div>
       </div>
+    );
+  }
+
+  // Listing pages (search / lookup / history / progress): no rail. The four
+  // panels switch via horizontal tabs at the top so the layout stays clean.
+  return (
+    <div className="space-y-6">
+      <PanelTabs items={railItems} active={panel} onChange={setPanel} />
+
+      {panel === 'search' && (
+        <SearchPanel
+          query={query}
+          setQuery={setQuery}
+          onSubmit={onSubmit}
+          pickSuggestion={pickSuggestion}
+          source={source}
+          setSource={setSource}
+          chosenLevel={chosenLevel}
+          setChosenLevel={setChosenLevel}
+          currentLevel={currentLevel}
+          settings={settings}
+          reading={reading}
+          sourceError={sourceError}
+          submitted={submitted}
+          results={results}
+          searching={searching}
+          onPickResult={(title) => setSelectedTitle(title)}
+        />
+      )}
+
+      {panel === 'lookup' && (
+        <LookupPanel
+          progress={progress}
+          setProgress={setProgress}
+          reading={reading}
+          seedWord={seedLookup}
+          consumeSeed={() => setSeedLookup('')}
+        />
+      )}
+
+      {panel === 'history' && (
+        <HistoryPanel reading={reading} onReopen={reopenArticle} />
+      )}
+
+      {panel === 'progress' && (
+        <ProgressPanel reading={reading} currentLevel={currentLevel} />
+      )}
     </div>
+  );
+}
+
+// Horizontal version of the rail used on listing pages. Looks like the
+// LengList tab bar so it feels native.
+function PanelTabs({ items, active, onChange }) {
+  return (
+    <nav
+      aria-label="Reader sections"
+      className="-mx-1 flex gap-1 overflow-x-auto px-1"
+    >
+      {items.map((item) => {
+        const isActive = item.id === active;
+        return (
+          <button
+            key={item.id}
+            onClick={() => onChange(item.id)}
+            aria-pressed={isActive}
+            className={[
+              'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition',
+              isActive
+                ? 'bg-white text-slate-900 font-semibold shadow'
+                : 'bg-white/5 text-white/75 hover:bg-white/10',
+            ].join(' ')}
+          >
+            <span aria-hidden>{item.icon}</span>
+            <span>{item.label}</span>
+            {item.badge != null && item.badge > 0 && (
+              <span
+                className={[
+                  'inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-bold',
+                  isActive ? 'bg-fuchsia-500 text-white' : 'bg-fuchsia-500 text-white',
+                ].join(' ')}
+              >
+                {item.badge > 99 ? '99+' : item.badge}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 
