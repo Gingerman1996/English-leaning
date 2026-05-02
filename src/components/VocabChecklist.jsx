@@ -82,8 +82,9 @@ export default function VocabChecklist({ words, progress, setProgress }) {
                   <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); speak(entry.word); }}
-                    className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] hover:bg-white/15"
-                    title="Hear it"
+                    className="icon-btn"
+                    title={`Hear "${entry.word}"`}
+                    aria-label={`Hear "${entry.word}"`}
                   >
                     🔊
                   </button>

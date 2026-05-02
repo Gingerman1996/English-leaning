@@ -22,7 +22,6 @@ import {
 } from '../hooks/useReadingProgress.js';
 import VocabChecklist from './VocabChecklist.jsx';
 import WordLookup from './WordLookup.jsx';
-import SettingsModal from './SettingsModal.jsx';
 
 const SUGGESTED_TOPICS = [
   'space exploration',
@@ -45,8 +44,9 @@ function deriveLevel(progress, override) {
 
 export default function Reader({ progress, setProgress }) {
   const reading = useReadingProgress();
-  const [settings, setSettings] = useSettings();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Settings now lives at the App level (header gear icon). We only need
+  // read access for the Guardian API key.
+  const [settings] = useSettings();
   const currentLevel = deriveLevel(progress, reading.state.levelOverride);
   const [chosenLevel, setChosenLevel] = useState(currentLevel);
   const [source, setSource] = useState('wikipedia'); // 'wikipedia' | 'guardian'
@@ -114,40 +114,22 @@ export default function Reader({ progress, setProgress }) {
 
   return (
     <div className="space-y-6">
-      <SettingsModal
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        settings={settings}
-        setSettings={setSettings}
-      />
-
       <div className="glass-strong relative overflow-hidden rounded-3xl p-6">
         <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-fuchsia-500/30 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-indigo-500/30 blur-3xl" />
         <div className="relative">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h1 className="heading text-3xl">Learn from Reading</h1>
-              <p className="mt-1 max-w-2xl text-sm text-white/65">
-                Pick any topic — we'll find an article at your reading level and highlight the words
-                you might not know yet. Tick the ones you know in the checklist; if you master 90% of
-                three articles in a row, you'll auto-level-up.
-              </p>
-            </div>
-            <button
-              onClick={() => setSettingsOpen(true)}
-              className="shrink-0 rounded-full bg-white/10 p-2 text-sm hover:bg-white/15"
-              title="Settings"
-            >
-              ⚙️
-            </button>
-          </div>
+          <h1 className="heading text-3xl">Learn from Reading</h1>
+          <p className="mt-1 max-w-2xl text-sm text-white/70">
+            Pick any topic — we'll find an article at your reading level and highlight the words
+            you might not know yet. Tick the ones you know in the checklist; if you master 90% of
+            three articles in a row, you'll auto-level-up.
+          </p>
 
           <SourcePicker source={source} setSource={setSource} />
 
           {source === 'guardian' && !settings.guardianApiKey && (
             <div className="mt-3 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-100">
-              No Guardian API key set. <button onClick={() => setSettingsOpen(true)} className="underline font-semibold">Open settings</button> to add one (free, 1 minute).
+              No Guardian API key set. Open the ⚙️ Settings button in the header to add one (free, 1 minute).
             </div>
           )}
 
@@ -192,7 +174,7 @@ export default function Reader({ progress, setProgress }) {
 
       <PromotionStreak reading={reading} currentLevel={currentLevel} />
 
-      {sourceError && <SourceError error={sourceError} onOpenSettings={() => setSettingsOpen(true)} />}
+      {sourceError && <SourceError error={sourceError} />}
 
       {!submitted && <Welcome source={source} />}
 
@@ -235,15 +217,14 @@ function SourcePicker({ source, setSource }) {
   );
 }
 
-function SourceError({ error, onOpenSettings }) {
+function SourceError({ error }) {
   if (error === 'missing-key') return null; // already covered by banner above
   let msg = error;
-  if (error === 'invalid-key') msg = 'Guardian API rejected the key. Open Settings to fix it.';
-  if (error === 'rate-limited') msg = 'Guardian API rate limit hit (test keys are shared). Try again in a minute or use your own key.';
+  if (error === 'invalid-key') msg = 'Guardian API rejected the key. Open the ⚙️ Settings button in the header to fix it.';
+  if (error === 'rate-limited') msg = 'Guardian API rate limit hit (test keys are shared). Try again in a minute, or use your own key in Settings.';
   return (
     <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-100">
-      {msg}{' '}
-      <button onClick={onOpenSettings} className="underline font-semibold">Open settings</button>
+      {msg}
     </div>
   );
 }
@@ -524,43 +505,55 @@ function ArticleView({ article, loading, error, chosenLevel, progress, setProgre
         setProgress={setProgress}
       />
 
-      <div className="glass rounded-3xl p-5 text-center">
-        {completed ? (
-          <div className="space-y-1">
-            <div className="text-2xl">✅</div>
-            <p className="text-sm text-white/75">
-              Recorded: <strong>{Math.round(mastery * 100)}%</strong> mastery
-              ({knownCount} / {totalHighlighted}).
-              {totalHighlighted < MIN_TARGET_WORDS &&
-                ` (Articles need ≥${MIN_TARGET_WORDS} highlighted words to count toward auto level-up.)`}
-            </p>
-            <button onClick={onBack} className="btn-ghost mt-2">
-              Read another article
-            </button>
-          </div>
-        ) : (
-          <>
-            <p className="text-sm text-white/65">
-              When you're done, log this session — it counts toward your auto level-up.
-            </p>
-            <p className="mt-1 text-xs text-white/45">
-              Current mastery: <strong>{Math.round(mastery * 100)}%</strong>
-              ({knownCount} / {totalHighlighted})
-            </p>
-            <button onClick={handleComplete} className="btn-primary mt-3">
-              ✓ Mark article complete
-            </button>
-          </>
-        )}
-      </div>
-
-      <div className="glass rounded-3xl p-4 text-xs text-white/55">
+      <div className="glass rounded-3xl p-4 text-xs text-white/65">
         <span className="text-emerald-200">●</span> green underline = at your level (practice)
         &nbsp;·&nbsp;
         <span className="text-amber-200">∿</span> amber wavy = above your level (stretch)
         &nbsp;·&nbsp;
         click any highlight for meaning + audio + ✓ I know it. Mastery ≥{Math.round(PASS_THRESHOLD * 100)}%
         on {PROMOTE_AFTER_PASSES} articles in a row triggers auto level-up.
+      </div>
+
+      {/* Sticky CTA — visible whether the user has scrolled to the bottom
+          or is still reading mid-article. Disappears once recorded. */}
+      <div className="sticky bottom-3 z-20">
+        <div className="mx-auto max-w-3xl">
+          {completed ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border border-emerald-400/40 bg-emerald-500/15 backdrop-blur-xl px-4 py-3 shadow-card text-sm text-emerald-100"
+            >
+              <div className="flex items-center gap-3">
+                <div className="text-xl">✅</div>
+                <div className="flex-1">
+                  Recorded: <strong>{Math.round(mastery * 100)}%</strong> mastery
+                  ({knownCount} / {totalHighlighted})
+                  {totalHighlighted < MIN_TARGET_WORDS && (
+                    <span className="ml-1 text-emerald-200/80">
+                      · needs ≥{MIN_TARGET_WORDS} highlights to count
+                    </span>
+                  )}
+                </div>
+                <button onClick={onBack} className="rounded-full bg-white/15 px-3 py-1 text-xs hover:bg-white/25">
+                  Next article →
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="rounded-2xl border border-white/15 bg-slate-900/85 backdrop-blur-xl px-4 py-3 shadow-card">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="text-xs text-white/70">
+                  Mastery: <strong className="text-white">{Math.round(mastery * 100)}%</strong>
+                  <span className="text-white/55"> ({knownCount}/{totalHighlighted})</span>
+                </div>
+                <button onClick={handleComplete} className="ml-auto btn-primary py-2 text-sm">
+                  ✓ Mark complete
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

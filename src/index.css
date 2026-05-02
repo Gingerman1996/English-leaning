@@ -43,6 +43,13 @@ body {
     @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/80;
   }
 
+  /* Inline icon buttons (🔊, 🗣️, ×, etc.). Forced 32×32 minimum so touch
+   * targets stop failing the WCAG-AA-recommended 24×24 / iOS-recommended
+   * 44×44 for primary actions. */
+  .icon-btn {
+    @apply inline-flex items-center justify-center min-h-[2rem] min-w-[2rem] rounded-full bg-white/10 px-2.5 text-xs leading-none text-white/85 transition hover:bg-white/15;
+  }
+
   .heading {
     @apply font-display font-bold tracking-tight;
   }
@@ -64,6 +71,30 @@ body {
     color: transparent;
     animation: shimmer 3s linear infinite;
   }
+}
+
+/* Keyboard-accessibility: a clearly-visible focus ring for keyboard users
+ * only. Mouse clicks don't trigger :focus-visible in modern browsers, so
+ * this won't show on every button click. Fixes the "where am I?" problem
+ * the design audit flagged as critical. */
+*:focus {
+  outline: none;
+}
+*:focus-visible {
+  outline: 2px solid rgba(192, 132, 252, 0.85);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.25);
+}
+
+/* Lighten placeholder contrast — the previous /35 was failing AA. */
+::placeholder {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 ::-webkit-scrollbar {

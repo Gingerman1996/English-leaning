@@ -115,7 +115,7 @@ export default function PronunciationCheck({ word }) {
       : isTranscribing
         ? (modelStillLoading ? `Waiting for model · ${progress}%` : 'Transcribing…')
       : last ? 'Try again'
-      : 'Tap to record · grant mic when asked';
+      : 'Tap to record';
 
   return (
     <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-5">
@@ -163,9 +163,9 @@ export default function PronunciationCheck({ word }) {
             </div>
           )}
           {!isLoading && !modelStillLoading && !last && !isError && (
-            <p className="mt-1 text-xs text-white/55">
-              First time: ~40 MB Whisper-tiny model downloads & caches in your browser.
-              Speak clearly within ~2 seconds, then tap stop.
+            <p className="mt-1 text-xs text-white/70">
+              First tap downloads ~92 MB of Whisper model into your browser cache (one time).
+              Speak clearly within 2 seconds, then tap stop. Audio never leaves your device.
             </p>
           )}
           {isError && error && (

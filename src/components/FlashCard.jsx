@@ -26,8 +26,9 @@ function ExampleLine({ text }) {
       {ttsAvailable() && (
         <button
           onClick={() => speak(text)}
-          className="ml-1 shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/80 hover:bg-white/15"
+          className="icon-btn ml-1 shrink-0"
           title="Read this example aloud"
+          aria-label="Read this example aloud"
         >
           🔊
         </button>

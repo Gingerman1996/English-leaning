@@ -1,8 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function SettingsModal({ open, onClose, settings, setSettings }) {
   const [apiKey, setApiKey] = useState(settings.guardianApiKey || '');
+
+  // Sync local state when the parent's settings change (e.g. someone else
+  // edits the key) and reset the input each time the modal opens.
+  useEffect(() => {
+    if (open) setApiKey(settings.guardianApiKey || '');
+  }, [open, settings.guardianApiKey]);
+
+  // Close on Escape.
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
 
   function save() {
     setSettings({ ...settings, guardianApiKey: apiKey.trim() });

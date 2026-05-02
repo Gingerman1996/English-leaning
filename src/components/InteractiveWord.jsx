@@ -18,14 +18,21 @@ export default function InteractiveWord({ token, kind, entry, progress, setProgr
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  // Click outside to close.
+  // Click outside to close, and Escape key.
   useEffect(() => {
     if (!open) return;
     function onDoc(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     }
+    function onKey(e) {
+      if (e.key === 'Escape') setOpen(false);
+    }
     document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [open]);
 
   const className = KIND_STYLES[kind] || '';

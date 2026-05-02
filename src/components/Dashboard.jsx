@@ -5,9 +5,10 @@ import StatCard from './StatCard.jsx';
 import { LEVEL_META } from '../data/levels.js';
 import { ALL_WORDS } from '../data/words.js';
 
-export default function Dashboard({ progress, summary, learnedCount, onStartReview, onExplore }) {
+export default function Dashboard({ progress, summary, learnedCount, onStartReview, onExplore, onRead }) {
   const totalWords = ALL_WORDS.length;
   const seenPct = Math.round((summary.seen / totalWords) * 100);
+  const isFreshUser = summary.seen === 0;
 
   return (
     <div className="space-y-8">
@@ -18,43 +19,100 @@ export default function Dashboard({ progress, summary, learnedCount, onStartRevi
         onExplore={onExplore}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Cards due"
-          value={summary.due.toLocaleString()}
-          sub={summary.due > 0 ? 'Review now to keep streak' : 'No reviews waiting'}
-          icon="⏳"
-          accent="from-rose-400 to-fuchsia-500"
-        />
-        <StatCard
-          label="Learned"
-          value={summary.learned.toLocaleString()}
-          sub={`${summary.mature.toLocaleString()} mature (>21d)`}
-          icon="🌱"
-          accent="from-emerald-400 to-teal-500"
-        />
-        <StatCard
-          label="Seen"
-          value={`${summary.seen.toLocaleString()}/${totalWords}`}
-          sub={`${seenPct}% of catalog`}
-          icon="📖"
-          accent="from-sky-400 to-indigo-500"
-        />
-        <StatCard
-          label="Avg ease"
-          value={avgEase(progress)}
-          sub="Higher = better recall"
-          icon="✨"
-          accent="from-amber-400 to-orange-500"
-        />
-      </div>
+      {isFreshUser ? (
+        <FreshStartPanel onStartReview={onStartReview} onExplore={onExplore} onRead={onRead} />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Cards due"
+            value={summary.due.toLocaleString()}
+            sub={summary.due > 0 ? 'Review now to keep streak' : 'No reviews waiting'}
+            icon="⏳"
+            accent="from-rose-400 to-fuchsia-500"
+          />
+          <StatCard
+            label="Learned"
+            value={summary.learned.toLocaleString()}
+            sub={`${summary.mature.toLocaleString()} mature (>21d)`}
+            icon="🌱"
+            accent="from-emerald-400 to-teal-500"
+          />
+          <StatCard
+            label="Seen"
+            value={`${summary.seen.toLocaleString()}/${totalWords}`}
+            sub={`${seenPct}% of catalog`}
+            icon="📖"
+            accent="from-sky-400 to-indigo-500"
+          />
+          <StatCard
+            label="Avg ease"
+            value={avgEase(progress)}
+            sub="Higher = better recall"
+            icon="✨"
+            accent="from-amber-400 to-orange-500"
+          />
+        </div>
+      )}
 
       <LevelChef learnedCount={learnedCount} />
 
       <MindStones learnedCount={learnedCount} />
 
-      <LevelLadder progress={progress} />
+      {!isFreshUser && <LevelLadder progress={progress} />}
     </div>
+  );
+}
+
+function FreshStartPanel({ onStartReview, onExplore, onRead }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="glass rounded-3xl p-6"
+    >
+      <div className="text-center">
+        <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-indigo-500 text-2xl">
+          ✨
+        </div>
+        <h2 className="heading mt-3 text-xl">Three ways to start</h2>
+        <p className="mt-1 text-sm text-white/70">
+          Pick whatever sounds most fun. You can always switch.
+        </p>
+      </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <button
+          onClick={onStartReview}
+          className="group rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:bg-white/[0.08]"
+        >
+          <div className="text-2xl">🔁</div>
+          <div className="mt-1 font-display text-base font-semibold">Review</div>
+          <p className="mt-1 text-xs text-white/65">
+            Anki-style flashcards. 12 fresh words a day, then your queue takes over.
+          </p>
+        </button>
+        <button
+          onClick={onExplore}
+          className="group rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:bg-white/[0.08]"
+        >
+          <div className="text-2xl">📚</div>
+          <div className="mt-1 font-display text-base font-semibold">Explore</div>
+          <p className="mt-1 text-xs text-white/65">
+            Browse the full catalog by CEFR level. Tap any word for a definition + audio.
+          </p>
+        </button>
+        <button
+          onClick={onRead}
+          className="group rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left transition hover:bg-white/[0.08]"
+        >
+          <div className="text-2xl">📖</div>
+          <div className="mt-1 font-display text-base font-semibold">Read</div>
+          <p className="mt-1 text-xs text-white/65">
+            Search a topic. Wikipedia/Guardian articles with at-your-level highlights.
+          </p>
+        </button>
+      </div>
+    </motion.div>
   );
 }
 

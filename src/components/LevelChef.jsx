@@ -36,12 +36,11 @@ export default function LevelChef({ learnedCount }) {
         </motion.div>
 
         <div className="space-y-3">
-          <div className="flex items-baseline gap-2">
-            <span className="pill border-white/20 bg-white/10 text-white">CEFR · {current.code}</span>
-            <span className="text-xs uppercase tracking-[0.2em] text-white/50">{current.name}</span>
+          <div className="flex flex-wrap items-baseline gap-2">
+            <h3 className="heading text-3xl">{current.code} · {current.name}</h3>
+            <span className="text-sm text-white/65">aka {current.title}</span>
           </div>
-          <h3 className="heading text-3xl">{current.title}</h3>
-          <p className="max-w-xl text-sm leading-relaxed text-white/70">{current.description}</p>
+          <p className="max-w-xl text-sm leading-relaxed text-white/75">{current.description}</p>
 
           <div className="mt-3">
             <div className="flex items-center justify-between text-xs text-white/60">

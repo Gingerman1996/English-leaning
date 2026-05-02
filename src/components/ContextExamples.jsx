@@ -87,8 +87,9 @@ function ContextItem({ item }) {
         {ttsAvailable() && (
           <button
             onClick={() => speak(plainText(item.snippet))}
-            className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/80 hover:bg-white/15"
+            className="icon-btn shrink-0"
             title="Read this passage aloud"
+            aria-label="Read this passage aloud"
           >
             🔊
           </button>
