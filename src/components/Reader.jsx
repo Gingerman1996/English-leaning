@@ -725,7 +725,7 @@ function LevelPicker({ chosen, setChosen, currentLevel }) {
         <span className="ml-1 opacity-70">▾</span>
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-44 rounded-2xl border border-white/15 bg-slate-900/95 p-1.5 shadow-card backdrop-blur-xl">
+        <div className="absolute right-0 z-40 mt-2 w-44 rounded-2xl border border-white/15 bg-slate-900/95 p-1.5 shadow-card backdrop-blur-xl">
           {LEVEL_META.map((l) => (
             <button
               key={l.code}

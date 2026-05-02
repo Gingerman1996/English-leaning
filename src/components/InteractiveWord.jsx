@@ -65,7 +65,7 @@ export default function InteractiveWord({ token, kind, entry, progress, setProgr
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-1/2 z-30 mt-2 w-72 -translate-x-1/2 rounded-2xl border border-white/15 bg-slate-900/95 p-3 text-left shadow-card backdrop-blur-xl"
+            className="absolute left-1/2 z-40 mt-2 w-72 -translate-x-1/2 rounded-2xl border border-white/15 bg-slate-900/95 p-3 text-left shadow-card backdrop-blur-xl"
           >
             <Popover entry={entry} kind={kind} onClose={() => setOpen(false)} onMarkKnown={markKnown} />
           </motion.div>
