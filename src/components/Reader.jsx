@@ -13,7 +13,7 @@ import {
 import InteractiveWord from './InteractiveWord.jsx';
 import { LEVEL_META, levelForLearnedCount } from '../data/levels.js';
 import { isLearned } from '../utils/srs.js';
-import { speak, ttsAvailable } from '../hooks/useSpeech.js';
+import { speak, stopSpeaking, ttsAvailable, useIsSpeaking } from '../hooks/useSpeech.js';
 import {
   useReadingProgress,
   PROMOTE_AFTER_PASSES,
@@ -363,10 +363,17 @@ function SearchResults({ query, results, loading, onPick, chosenLevel, source })
 }
 
 function ArticleView({ article, loading, error, chosenLevel, progress, setProgress, reading, onBack }) {
+  const speaking = useIsSpeaking();
   const fullText = useMemo(
     () => (article?.paragraphs || []).join('\n\n'),
     [article]
   );
+
+  // Ensure any in-flight speech stops if the user navigates away or swaps
+  // articles mid-readout.
+  useEffect(() => {
+    return () => stopSpeaking();
+  }, [article?.title]);
   const stats = useMemo(
     () => (fullText ? countHighlights(fullText, chosenLevel, progress) : { target: 0, challenge: 0 }),
     [fullText, chosenLevel, progress]
@@ -482,11 +489,16 @@ function ArticleView({ article, loading, error, chosenLevel, progress, setProgre
           </span>
           {ttsAvailable() && (
             <button
-              onClick={() => speak(fullText.slice(0, 1500))}
-              className="ml-auto rounded-full bg-white/10 px-3 py-1 text-xs hover:bg-white/15"
-              title="Read this article aloud (browser TTS)"
+              onClick={() => (speaking ? stopSpeaking() : speak(fullText.slice(0, 1500)))}
+              className={[
+                'ml-auto rounded-full px-3 py-1 text-xs',
+                speaking
+                  ? 'bg-rose-500/30 text-rose-100 hover:bg-rose-500/40'
+                  : 'bg-white/10 hover:bg-white/15',
+              ].join(' ')}
+              title={speaking ? 'Stop reading' : 'Read this article aloud (browser TTS)'}
             >
-              🔊 read aloud
+              {speaking ? '⏹ stop' : '🔊 read aloud'}
             </button>
           )}
         </div>
