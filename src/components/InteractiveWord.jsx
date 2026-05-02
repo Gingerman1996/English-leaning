@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
-
-const POPOVER_WIDTH = 288; // matches `w-72`
 import { useDictionary, playAudio } from '../hooks/useDictionary.js';
 import { speak, ttsAvailable } from '../hooks/useSpeech.js';
 import { newCardState, review } from '../utils/srs.js';
 import { LEVEL_META } from '../data/levels.js';
+import RatingButtons from './RatingButtons.jsx';
+
+const POPOVER_WIDTH = 288; // matches `w-72`
 
 const KIND_STYLES = {
   // Highlight intensity: target (your level) > challenge (above) > easy/learned (none)
