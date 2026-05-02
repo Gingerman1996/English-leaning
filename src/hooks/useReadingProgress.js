@@ -31,7 +31,8 @@ export const MIN_TARGET_WORDS = 5;
 const STORAGE_KEY = 'lenglist:reading';
 const initialState = {
   levelOverride: null,
-  history: [], // [{ ts, title, level, total, known, mastery, outcome }]
+  history: [], // [{ ts, title, level, total, known, mastery, outcome, source, url }]
+  lookupHistory: [], // [{ ts, word, level }]  — populated by Lookup panel
   consecutivePasses: 0,
   totalArticlesRead: 0,
   lastPromotedAt: null,
@@ -44,7 +45,7 @@ export function useReadingProgress() {
   // article (clicks "I'm done"). Returns { promoted, fromLevel, toLevel }
   // so the caller can show a celebration toast.
   const recordArticle = useCallback(
-    ({ title, level, total, known }) => {
+    ({ title, level, total, known, source, url }) => {
       let promotion = null;
       setState((prev) => {
         const safeLevel = level || 'A1';
@@ -62,6 +63,8 @@ export function useReadingProgress() {
           known,
           mastery: ratio,
           outcome,
+          source: source || 'wikipedia',
+          url: url || null,
         };
         const newHistory = [...(prev.history || []), entry].slice(-15);
 
@@ -95,6 +98,29 @@ export function useReadingProgress() {
     [setState]
   );
 
+  // Track Lookup-panel queries so the panel can show "recent lookups"
+  // without losing them across page reloads. Dedupes by lowercase word
+  // (most-recent wins).
+  const recordLookup = useCallback(
+    ({ word, level }) => {
+      const w = (word || '').trim().toLowerCase();
+      if (!w) return;
+      setState((prev) => {
+        const filtered = (prev.lookupHistory || []).filter((e) => e.word !== w);
+        return {
+          ...prev,
+          lookupHistory: [{ ts: Date.now(), word: w, level: level || null }, ...filtered].slice(0, 30),
+        };
+      });
+    },
+    [setState]
+  );
+
+  const clearLookupHistory = useCallback(
+    () => setState((prev) => ({ ...prev, lookupHistory: [] })),
+    [setState]
+  );
+
   const setLevelOverride = useCallback(
     (level) => setState((prev) => ({ ...prev, levelOverride: level })),
     [setState]
@@ -114,6 +140,8 @@ export function useReadingProgress() {
     state,
     recentHistory,
     recordArticle,
+    recordLookup,
+    clearLookupHistory,
     setLevelOverride,
     resetLevelOverride,
   };

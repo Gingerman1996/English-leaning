@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDictionary, playAudio } from '../hooks/useDictionary.js';
 import { speak, ttsAvailable } from '../hooks/useSpeech.js';
@@ -10,15 +10,31 @@ import { LEVEL_META } from '../data/levels.js';
 // proper nouns, technical terms, conjugations our stemmer missed, or words
 // outside our CEFR corpus entirely. Type the word, see definition + audio,
 // and (if it happens to be in our CEFR list) tick "I know it" to feed SRS.
+//
+// Optional `seedWord` prop: when given, pre-populates the active query
+// (used by the Lookup panel to re-open a word from recent-lookup history).
+// Optional `onLookup` callback: fires whenever a lookup happens, so the
+// Lookup panel can persist it to lookupHistory in localStorage.
 
-export default function WordLookup({ progress, setProgress }) {
-  const [query, setQuery] = useState('');
-  const [active, setActive] = useState('');
+export default function WordLookup({ progress, setProgress, seedWord, onLookup }) {
+  const [query, setQuery] = useState(seedWord || '');
+  const [active, setActive] = useState(seedWord || '');
+
+  useEffect(() => {
+    if (seedWord) {
+      setQuery(seedWord);
+      setActive(seedWord);
+    }
+  }, [seedWord]);
 
   function onSubmit(e) {
     e.preventDefault();
     const w = query.trim().toLowerCase().replace(/[^a-z'-]/g, '');
     setActive(w);
+    if (w && onLookup) {
+      const entry = lookupWord(w);
+      onLookup({ word: w, level: entry?.level || null });
+    }
   }
 
   return (

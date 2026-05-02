@@ -22,6 +22,7 @@ import {
 } from '../hooks/useReadingProgress.js';
 import VocabChecklist from './VocabChecklist.jsx';
 import WordLookup from './WordLookup.jsx';
+import ReaderRail from './ReaderRail.jsx';
 
 const SUGGESTED_TOPICS = [
   'space exploration',
@@ -60,6 +61,8 @@ export default function Reader({ progress, setProgress }) {
   const [query, setQuery] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [selectedTitle, setSelectedTitle] = useState(null);
+  const [panel, setPanel] = useState('search'); // 'search' | 'lookup' | 'history' | 'progress'
+  const [seedLookup, setSeedLookup] = useState('');
 
   const wiki = useArticleSearch(source === 'wikipedia' ? submitted : '', chosenLevel);
   const wikiContent = useArticleContent(
@@ -97,6 +100,25 @@ export default function Reader({ progress, setProgress }) {
     setSelectedTitle(null);
   }
 
+  // Re-open a previously-read article via the History panel. For Wikipedia
+  // we just set the title and let useArticleContent re-fetch (the cache
+  // hits if the title hasn't aged out). For Guardian we need a re-search
+  // because the API doesn't expose stable per-article fetch — the closest
+  // we have is title-as-query, but bookmark navigation works best by
+  // opening the original URL externally.
+  function reopenArticle(entry) {
+    if (entry.source !== source) setSource(entry.source);
+    if (entry.level && entry.level !== chosenLevel) setChosenLevel(entry.level);
+    setSubmitted(entry.title);
+    setSelectedTitle(entry.title);
+    setPanel('search');
+  }
+
+  function jumpToLookup(word) {
+    setSeedLookup(word);
+    setPanel('lookup');
+  }
+
   if (selectedTitle && (article || loadingArticle)) {
     return (
       <ArticleView
@@ -107,13 +129,81 @@ export default function Reader({ progress, setProgress }) {
         progress={progress}
         setProgress={setProgress}
         reading={reading}
+        source={source}
         onBack={() => setSelectedTitle(null)}
       />
     );
   }
 
+  const railItems = [
+    { id: 'search', icon: '🔍', label: 'Search' },
+    { id: 'lookup', icon: '🔎', label: 'Look up word' },
+    { id: 'history', icon: '📚', label: 'History', badge: reading.state.history?.length || 0 },
+    { id: 'progress', icon: '🎯', label: 'Progress', badge: reading.state.consecutivePasses || 0 },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
+      <ReaderRail items={railItems} active={panel} onChange={setPanel} />
+
+      <div className="min-w-0 flex-1 space-y-6">
+        {panel === 'search' && (
+          <SearchPanel
+            query={query}
+            setQuery={setQuery}
+            onSubmit={onSubmit}
+            pickSuggestion={pickSuggestion}
+            source={source}
+            setSource={setSource}
+            chosenLevel={chosenLevel}
+            setChosenLevel={setChosenLevel}
+            currentLevel={currentLevel}
+            settings={settings}
+            reading={reading}
+            sourceError={sourceError}
+            submitted={submitted}
+            results={results}
+            searching={searching}
+            onPickResult={(title) => setSelectedTitle(title)}
+          />
+        )}
+
+        {panel === 'lookup' && (
+          <LookupPanel
+            progress={progress}
+            setProgress={setProgress}
+            reading={reading}
+            seedWord={seedLookup}
+            consumeSeed={() => setSeedLookup('')}
+          />
+        )}
+
+        {panel === 'history' && (
+          <HistoryPanel
+            reading={reading}
+            onReopen={reopenArticle}
+          />
+        )}
+
+        {panel === 'progress' && (
+          <ProgressPanel reading={reading} currentLevel={currentLevel} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Panel: Search (the original Reader landing surface)
+// ───────────────────────────────────────────────────────────────────────────
+function SearchPanel({
+  query, setQuery, onSubmit, pickSuggestion,
+  source, setSource, chosenLevel, setChosenLevel, currentLevel,
+  settings, reading, sourceError,
+  submitted, results, searching, onPickResult,
+}) {
+  return (
+    <>
       <div className="glass-strong relative overflow-hidden rounded-3xl p-6">
         <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-fuchsia-500/30 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-indigo-500/30 blur-3xl" />
@@ -138,7 +228,7 @@ export default function Reader({ progress, setProgress }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={source === 'guardian' ? 'Search Guardian articles…' : "Search a topic, e.g. 'cooking', 'space'…"}
-              className="flex-1 min-w-[14rem] rounded-2xl border border-white/15 bg-black/30 px-4 py-2.5 text-sm placeholder:text-white/40 focus:border-white/30 focus:outline-none"
+              className="flex-1 min-w-[14rem] rounded-2xl border border-white/15 bg-black/30 px-4 py-2.5 text-sm placeholder:text-white/50 focus:border-white/30 focus:outline-none"
             />
             <LevelPicker
               chosen={chosenLevel}
@@ -149,7 +239,7 @@ export default function Reader({ progress, setProgress }) {
           </form>
 
           <div className="mt-4 flex flex-wrap gap-1.5">
-            <span className="text-[11px] uppercase tracking-[0.16em] text-white/45 mr-1 self-center">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-white/55 mr-1 self-center">
               Try:
             </span>
             {SUGGESTED_TOPICS.map((t) => (
@@ -164,7 +254,7 @@ export default function Reader({ progress, setProgress }) {
           </div>
 
           {source === 'guardian' && (chosenLevel === 'A1' || chosenLevel === 'A2') && (
-            <p className="mt-3 text-[11px] text-amber-200/80">
+            <p className="mt-3 text-[11px] text-amber-200/85">
               Heads up: Guardian articles use full journalistic English — usually too advanced for {chosenLevel}.
               Wikipedia (Simple English) is a softer landing for beginners.
             </p>
@@ -183,11 +273,268 @@ export default function Reader({ progress, setProgress }) {
           query={submitted}
           results={results}
           loading={searching}
-          onPick={(title) => setSelectedTitle(title)}
+          onPick={onPickResult}
           chosenLevel={chosenLevel}
           source={source}
         />
       )}
+    </>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Panel: Lookup (the WordLookup component + recent history)
+// ───────────────────────────────────────────────────────────────────────────
+function LookupPanel({ progress, setProgress, reading, seedWord, consumeSeed }) {
+  const recents = reading.state.lookupHistory || [];
+
+  // Once the seed has primed the input, clear it so a manual lookup later
+  // doesn't get overridden by a stale seed.
+  useEffect(() => {
+    if (seedWord) {
+      const t = setTimeout(consumeSeed, 50);
+      return () => clearTimeout(t);
+    }
+  }, [seedWord, consumeSeed]);
+
+  return (
+    <div className="space-y-5">
+      <div className="glass-strong relative overflow-hidden rounded-3xl p-6">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-fuchsia-500/25 blur-3xl" />
+        <div className="relative">
+          <h1 className="heading text-2xl">🔎 Look up any word</h1>
+          <p className="mt-1 text-sm text-white/70">
+            Type any English word — useful for proper nouns, technical terms, or words our CEFR
+            corpus doesn't cover. If the word is in our list, you can also tick "I know it" to
+            push it into the SRS queue.
+          </p>
+        </div>
+      </div>
+
+      <WordLookup
+        progress={progress}
+        setProgress={setProgress}
+        seedWord={seedWord}
+        onLookup={reading.recordLookup}
+      />
+
+      <RecentLookups
+        recents={recents}
+        onPick={(word) => {
+          // Re-trigger a lookup of the same word: bump it to the top + the
+          // WordLookup component re-renders the result.
+          reading.recordLookup({ word, level: null });
+        }}
+        onClear={reading.clearLookupHistory}
+      />
+    </div>
+  );
+}
+
+function RecentLookups({ recents, onPick, onClear }) {
+  if (recents.length === 0) {
+    return (
+      <div className="glass rounded-3xl p-5 text-sm text-white/65">
+        Recent lookups will show up here so you can re-check a word fast.
+      </div>
+    );
+  }
+  return (
+    <div className="glass rounded-3xl p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs uppercase tracking-[0.18em] text-white/65">
+          Recent lookups · {recents.length}
+        </span>
+        <button onClick={onClear} className="text-xs text-white/60 hover:text-white">
+          Clear
+        </button>
+      </div>
+      <ul className="flex flex-wrap gap-1.5">
+        {recents.map((r) => {
+          const meta = r.level ? LEVEL_META.find((l) => l.code === r.level) : null;
+          return (
+            <li key={r.word + r.ts}>
+              <button
+                onClick={() => onPick(r.word)}
+                className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-xs hover:bg-white/10"
+                title={`Re-look up "${r.word}"`}
+              >
+                <span className="font-medium">{r.word}</span>
+                {meta && (
+                  <span
+                    className={`rounded-full bg-gradient-to-r ${meta.accent} px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white`}
+                  >
+                    {meta.code}
+                  </span>
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Panel: History — recent reading sessions
+// ───────────────────────────────────────────────────────────────────────────
+function HistoryPanel({ reading, onReopen }) {
+  const history = (reading.state.history || []).slice().reverse();
+  if (history.length === 0) {
+    return (
+      <div className="glass-strong rounded-3xl p-6">
+        <h1 className="heading text-2xl">📚 Reading history</h1>
+        <p className="mt-2 text-sm text-white/70">
+          Articles you've completed will appear here so you can re-open them, see the mastery you
+          scored, or open the original source.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-5">
+      <div className="glass-strong rounded-3xl p-6">
+        <h1 className="heading text-2xl">📚 Reading history</h1>
+        <p className="mt-1 text-sm text-white/70">
+          {history.length} article{history.length === 1 ? '' : 's'} read. Most recent first.
+        </p>
+      </div>
+      <ul className="space-y-3">
+        {history.map((h, i) => (
+          <HistoryItem key={`${h.title}-${h.ts}-${i}`} entry={h} onReopen={onReopen} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function HistoryItem({ entry, onReopen }) {
+  const meta = LEVEL_META.find((l) => l.code === entry.level);
+  const pct = Math.round((entry.mastery || 0) * 100);
+  const date = new Date(entry.ts);
+  const dateLabel = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  const outcomeMeta =
+    entry.outcome === 'pass' ? { color: 'text-emerald-300', icon: '✓' }
+    : entry.outcome === 'fail' ? { color: 'text-rose-300', icon: '✗' }
+    : { color: 'text-white/55', icon: '·' };
+  return (
+    <li className="glass rounded-2xl p-4">
+      <div className="flex items-start gap-3">
+        <span
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${meta?.accent || 'from-fuchsia-500 to-violet-500'} text-sm font-bold text-white`}
+        >
+          {entry.level || '?'}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-display text-base font-semibold leading-snug">{entry.title}</h3>
+          <p className="mt-1 text-[11px] text-white/55">
+            {entry.source === 'guardian' ? '🗞️ Guardian' : '📰 Wikipedia'} · {dateLabel}
+          </p>
+        </div>
+        <div className="text-right">
+          <div className={`font-display text-lg font-bold ${outcomeMeta.color}`}>
+            {pct}%
+          </div>
+          <div className="text-[10px] text-white/45">
+            {entry.known}/{entry.total}
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button onClick={() => onReopen(entry)} className="btn-ghost px-3 py-1.5 text-xs">
+          Re-open
+        </button>
+        {entry.url && (
+          <a
+            href={entry.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-white/55 hover:text-white"
+          >
+            Original source ↗
+          </a>
+        )}
+      </div>
+    </li>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Panel: Progress — streak, mastery history, level-up status
+// ───────────────────────────────────────────────────────────────────────────
+function ProgressPanel({ reading, currentLevel }) {
+  const passes = reading.state.consecutivePasses || 0;
+  const recent = (reading.state.history || []).slice(-PROMOTE_AFTER_PASSES * 2).reverse();
+  const totalRead = reading.state.totalArticlesRead || 0;
+  const lastPromotedAt = reading.state.lastPromotedAt;
+  return (
+    <div className="space-y-5">
+      <div className="glass-strong rounded-3xl p-6">
+        <h1 className="heading text-2xl">🎯 Progress</h1>
+        <p className="mt-1 text-sm text-white/70">
+          Your reading journey at a glance.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="glass rounded-2xl p-5">
+          <div className="text-xs uppercase tracking-[0.16em] text-white/55">Promotion streak</div>
+          <div className="mt-1 font-display text-3xl font-bold">
+            {passes}<span className="text-white/45 text-lg"> / {PROMOTE_AFTER_PASSES}</span>
+          </div>
+          <div className="mt-1 text-xs text-white/65">
+            articles passed at <strong>{currentLevel}</strong> with ≥{Math.round(PASS_THRESHOLD * 100)}% mastery
+          </div>
+          <div className="mt-3 flex gap-1.5">
+            {Array.from({ length: PROMOTE_AFTER_PASSES }, (_, i) => (
+              <div
+                key={i}
+                className={[
+                  'h-2 flex-1 rounded-full',
+                  i < passes ? 'bg-emerald-400' : 'bg-white/10',
+                ].join(' ')}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="glass rounded-2xl p-5">
+          <div className="text-xs uppercase tracking-[0.16em] text-white/55">Articles read</div>
+          <div className="mt-1 font-display text-3xl font-bold">{totalRead}</div>
+          <div className="mt-1 text-xs text-white/65">
+            {lastPromotedAt
+              ? `Last promotion: ${new Date(lastPromotedAt).toLocaleDateString()}`
+              : 'No promotion yet — keep reading to advance.'}
+          </div>
+        </div>
+      </div>
+
+      <div className="glass rounded-2xl p-5">
+        <div className="mb-3 text-xs uppercase tracking-[0.16em] text-white/55">
+          Recent sessions
+        </div>
+        {recent.length === 0 ? (
+          <p className="text-sm text-white/65">No sessions recorded yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {recent.map((h, i) => {
+              const pct = Math.round((h.mastery || 0) * 100);
+              const tone =
+                h.outcome === 'pass' ? 'border-emerald-400/30 bg-emerald-500/10'
+                : h.outcome === 'fail' ? 'border-rose-400/30 bg-rose-500/10'
+                : 'border-white/10 bg-white/[0.03]';
+              return (
+                <li key={`${h.title}-${h.ts}-${i}`} className={`flex items-center gap-3 rounded-xl border p-2.5 ${tone}`}>
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold">{h.level}</span>
+                  <span className="flex-1 truncate text-sm">{h.title}</span>
+                  <span className="text-xs font-semibold">{pct}%</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
@@ -343,7 +690,7 @@ function SearchResults({ query, results, loading, onPick, chosenLevel, source })
   );
 }
 
-function ArticleView({ article, loading, error, chosenLevel, progress, setProgress, reading, onBack }) {
+function ArticleView({ article, loading, error, chosenLevel, progress, setProgress, reading, source, onBack }) {
   const speaking = useIsSpeaking();
   const fullText = useMemo(
     () => (article?.paragraphs || []).join('\n\n'),
@@ -403,6 +750,8 @@ function ArticleView({ article, loading, error, chosenLevel, progress, setProgre
       level: chosenLevel,
       total: totalHighlighted,
       known: knownCount,
+      source: source || 'wikipedia',
+      url: article.url || null,
     });
     if (result) setPromotion(result);
   }
