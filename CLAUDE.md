@@ -149,6 +149,51 @@ at import. The naive stemmer in `tokenizer.js` handles trivial
 inflections (`running` → `run`, `studies` → `study`) — sufficient for
 Wikipedia text without pulling in a 200 KB NLP library.
 
+### Auto level-up algorithm
+
+`src/hooks/useReadingProgress.js` owns reading-session state, stored
+under `localStorage` key `lenglist:reading`:
+
+```js
+{
+  levelOverride: 'A2' | null,    // takes precedence over derived level
+  history: [{ ts, title, level, total, known, mastery, outcome }],
+  consecutivePasses: 0,
+  totalArticlesRead: 0,
+  lastPromotedAt: null,
+}
+```
+
+When the user clicks "Mark article complete" in the Reader,
+`recordArticle({ title, level, total, known })` is called. Mastery =
+`known / total`. The session is classified:
+
+  - `pass`    — mastery ≥ 0.90 AND total ≥ 5 highlighted words
+  - `fail`    — mastery < 0.70 (resets the streak)
+  - `neutral` — anything in between (streak unchanged)
+
+After **three consecutive passes** at the user's CURRENT level,
+`levelOverride` advances to the next CEFR rung. The streak resets and
+a celebration toast is shown. The function returns
+`{ fromLevel, toLevel }` so the caller can render the toast.
+
+Promotion stops at C2. The user can manually reset `levelOverride` via
+`resetLevelOverride()` to fall back to the learnedCount-derived level.
+
+### Vocabulary checklist + word lookup
+
+`VocabChecklist` (below the article) lists every unique target /
+challenge word in the article with a checkbox. Ticking marks the
+word as known via `review(state, 2)` ("Good"). The percentage feeds
+straight into the auto-level-up calculation.
+
+`WordLookup` is a free-form input above the checklist for words that
+*aren't* highlighted — proper nouns, technical terms, conjugations
+the stemmer missed. Type and submit; if the word maps into our CEFR
+list, you get the level chip and "I know it" button. Otherwise you
+get the dictionary definition + audio so you can still learn it,
+even if it doesn't feed SRS.
+
 ## Free Dictionary API gotchas
 
 - Returns **404 on missing entries** — `useDictionary` surfaces this as an

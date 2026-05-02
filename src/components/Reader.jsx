@@ -1,12 +1,25 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useArticleSearch } from '../hooks/useArticleSearch.js';
 import { useArticleContent } from '../hooks/useArticleContent.js';
-import { tokenize, classifyWord, countHighlights } from '../utils/tokenizer.js';
+import {
+  collectHighlightedWords,
+  countHighlights,
+  classifyWord,
+  tokenize,
+} from '../utils/tokenizer.js';
 import InteractiveWord from './InteractiveWord.jsx';
 import { LEVEL_META, levelForLearnedCount } from '../data/levels.js';
 import { isLearned } from '../utils/srs.js';
 import { speak, ttsAvailable } from '../hooks/useSpeech.js';
+import {
+  useReadingProgress,
+  PROMOTE_AFTER_PASSES,
+  PASS_THRESHOLD,
+  MIN_TARGET_WORDS,
+} from '../hooks/useReadingProgress.js';
+import VocabChecklist from './VocabChecklist.jsx';
+import WordLookup from './WordLookup.jsx';
 
 const SUGGESTED_TOPICS = [
   'space exploration',
@@ -21,14 +34,23 @@ const SUGGESTED_TOPICS = [
   'health',
 ];
 
-function deriveCurrentLevel(progress) {
+function deriveLevel(progress, override) {
+  if (override) return override;
   const learned = Object.values(progress).filter(isLearned).length;
   return levelForLearnedCount(learned).code;
 }
 
 export default function Reader({ progress, setProgress }) {
-  const currentLevel = deriveCurrentLevel(progress);
+  const reading = useReadingProgress();
+  const currentLevel = deriveLevel(progress, reading.state.levelOverride);
   const [chosenLevel, setChosenLevel] = useState(currentLevel);
+
+  // Sync chosen level when override changes (e.g. after auto-promotion).
+  useEffect(() => {
+    setChosenLevel(currentLevel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentLevel]);
+
   const [query, setQuery] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [selectedTitle, setSelectedTitle] = useState(null);
@@ -60,6 +82,7 @@ export default function Reader({ progress, setProgress }) {
         chosenLevel={chosenLevel}
         progress={progress}
         setProgress={setProgress}
+        reading={reading}
         onBack={() => setSelectedTitle(null)}
       />
     );
@@ -74,8 +97,8 @@ export default function Reader({ progress, setProgress }) {
           <h1 className="heading text-3xl">Learn from Reading</h1>
           <p className="mt-1 max-w-2xl text-sm text-white/65">
             Pick any topic — we'll find an article at your reading level and highlight the words
-            you might not know yet. Tap any highlight for a definition, pronunciation, and a
-            "I know it" shortcut to add it to your review queue.
+            you might not know yet. Tick the ones you know in the checklist; if you master 90% of
+            three articles in a row, you'll auto-level-up.
           </p>
 
           <form onSubmit={onSubmit} className="mt-5 flex flex-wrap items-center gap-2">
@@ -110,6 +133,8 @@ export default function Reader({ progress, setProgress }) {
         </div>
       </div>
 
+      <PromotionStreak reading={reading} currentLevel={currentLevel} />
+
       {!submitted && <Welcome />}
 
       {submitted && (
@@ -121,6 +146,17 @@ export default function Reader({ progress, setProgress }) {
           chosenLevel={chosenLevel}
         />
       )}
+    </div>
+  );
+}
+
+function PromotionStreak({ reading, currentLevel }) {
+  const passes = reading.state.consecutivePasses || 0;
+  if (passes === 0) return null;
+  return (
+    <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+      🔥 Promotion streak: <strong>{passes}/{PROMOTE_AFTER_PASSES}</strong> articles passed at
+      level {currentLevel} (≥{Math.round(PASS_THRESHOLD * 100)}% mastery). Finish {PROMOTE_AFTER_PASSES - passes} more to level up automatically.
     </div>
   );
 }
@@ -218,7 +254,7 @@ function SearchResults({ query, results, loading, onPick, chosenLevel }) {
   );
 }
 
-function ArticleView({ article, loading, error, chosenLevel, progress, setProgress, onBack }) {
+function ArticleView({ article, loading, error, chosenLevel, progress, setProgress, reading, onBack }) {
   const fullText = useMemo(
     () => (article?.paragraphs || []).join('\n\n'),
     [article]
@@ -227,6 +263,22 @@ function ArticleView({ article, loading, error, chosenLevel, progress, setProgre
     () => (fullText ? countHighlights(fullText, chosenLevel, progress) : { target: 0, challenge: 0 }),
     [fullText, chosenLevel, progress]
   );
+  const highlightedWords = useMemo(
+    () => (fullText ? collectHighlightedWords(fullText, chosenLevel, progress) : []),
+    [fullText, chosenLevel, progress]
+  );
+  const totalHighlighted = highlightedWords.length;
+  const knownCount = highlightedWords.filter((w) => isLearned(progress[w.entry.id])).length;
+  const mastery = totalHighlighted > 0 ? knownCount / totalHighlighted : 0;
+
+  const [completed, setCompleted] = useState(false);
+  const [promotion, setPromotion] = useState(null);
+
+  // Reset completion state when the article changes.
+  useEffect(() => {
+    setCompleted(false);
+    setPromotion(null);
+  }, [article?.title]);
 
   if (loading) {
     return (
@@ -247,6 +299,18 @@ function ArticleView({ article, loading, error, chosenLevel, progress, setProgre
     );
   }
 
+  function handleComplete() {
+    if (completed) return;
+    setCompleted(true);
+    const result = reading.recordArticle({
+      title: article.title,
+      level: chosenLevel,
+      total: totalHighlighted,
+      known: knownCount,
+    });
+    if (result) setPromotion(result);
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
@@ -260,6 +324,36 @@ function ArticleView({ article, loading, error, chosenLevel, progress, setProgre
           Open on {article.host} ↗
         </a>
       </div>
+
+      <AnimatePresence>
+        {promotion && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="rounded-3xl border-2 border-amber-300/50 bg-gradient-to-r from-amber-500/20 via-fuchsia-500/20 to-indigo-500/20 p-5"
+          >
+            <div className="flex items-center gap-3">
+              <div className="text-4xl">🎉</div>
+              <div className="flex-1">
+                <h3 className="font-display text-xl font-bold text-amber-100">
+                  Level up! {promotion.fromLevel} → {promotion.toLevel}
+                </h3>
+                <p className="text-sm text-white/75">
+                  You mastered three articles in a row at {promotion.fromLevel}. Reader articles
+                  will now be served at <strong>{promotion.toLevel}</strong>.
+                </p>
+              </div>
+              <button
+                onClick={() => setPromotion(null)}
+                className="rounded-full bg-white/10 px-3 py-1 text-xs hover:bg-white/15"
+              >
+                Got it
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="glass-strong rounded-3xl p-6 sm:p-8">
         {article.thumbnail && (
@@ -302,12 +396,51 @@ function ArticleView({ article, loading, error, chosenLevel, progress, setProgre
         </div>
       </div>
 
+      <WordLookup progress={progress} setProgress={setProgress} />
+
+      <VocabChecklist
+        words={highlightedWords}
+        progress={progress}
+        setProgress={setProgress}
+      />
+
+      <div className="glass rounded-3xl p-5 text-center">
+        {completed ? (
+          <div className="space-y-1">
+            <div className="text-2xl">✅</div>
+            <p className="text-sm text-white/75">
+              Recorded: <strong>{Math.round(mastery * 100)}%</strong> mastery
+              ({knownCount} / {totalHighlighted}).
+              {totalHighlighted < MIN_TARGET_WORDS &&
+                ` (Articles need ≥${MIN_TARGET_WORDS} highlighted words to count toward auto level-up.)`}
+            </p>
+            <button onClick={onBack} className="btn-ghost mt-2">
+              Read another article
+            </button>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-white/65">
+              When you're done, log this session — it counts toward your auto level-up.
+            </p>
+            <p className="mt-1 text-xs text-white/45">
+              Current mastery: <strong>{Math.round(mastery * 100)}%</strong>
+              ({knownCount} / {totalHighlighted})
+            </p>
+            <button onClick={handleComplete} className="btn-primary mt-3">
+              ✓ Mark article complete
+            </button>
+          </>
+        )}
+      </div>
+
       <div className="glass rounded-3xl p-4 text-xs text-white/55">
-        <span className="text-emerald-200">●</span> green underline = at your level (practice these)
+        <span className="text-emerald-200">●</span> green underline = at your level (practice)
         &nbsp;·&nbsp;
         <span className="text-amber-200">∿</span> amber wavy = above your level (stretch)
         &nbsp;·&nbsp;
-        click any highlight to see meaning + hear pronunciation, or press <kbd className="rounded bg-white/15 px-1">✓ I know it</kbd> to add it to your review queue.
+        click any highlight for meaning + audio + ✓ I know it. Mastery ≥{Math.round(PASS_THRESHOLD * 100)}%
+        on {PROMOTE_AFTER_PASSES} articles in a row triggers auto level-up.
       </div>
     </div>
   );
@@ -320,7 +453,6 @@ function Paragraph({ text, chosenLevel, progress, setProgress }) {
       {tokens.map((tok, i) => {
         if (tok.kind === 'gap') return tok.text;
         const c = classifyWord(tok.text, chosenLevel, progress);
-        // Plain (no highlight) words: render as bare text for performance.
         if (c.kind !== 'target' && c.kind !== 'challenge') return tok.text;
         return (
           <InteractiveWord
