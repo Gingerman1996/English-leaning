@@ -113,25 +113,40 @@ export function countHighlights(text, userLevelCode, progress) {
   return { target, challenge };
 }
 
-// Walk an article and collect the unique highlighted words (target +
-// challenge), mapped back to their CEFR entries. Used by the Reader to
-// build a vocabulary checklist below the article.
+// Walk an article and collect the unique level-relevant words (at the
+// user's level or above), regardless of whether the user has learned them.
+// Used by the VocabChecklist below the article so progress doesn't make
+// words *vanish* from the list when the user marks them known —
+// they simply tick over to "checked".
+//
+// Note: classification here is level-based only. classifyWord (used for
+// inline rendering) keeps the "learned" branch so the article body stops
+// underlining words the user already knows. The checklist needs to keep
+// them visible so the % bar reflects them.
 //
 // Returns: [{ entry, kind, count }, ...] sorted by:
-//   1. challenge before target (harder first — gives momentum to learn)
-//   2. higher count first (frequent in the article = more useful)
+//   1. unlearned words first (focus on what's still pending)
+//   2. challenge before target (stretch goals at the top)
+//   3. higher count first (frequent in the article = more useful)
 export function collectHighlightedWords(text, userLevelCode, progress) {
-  const seen = new Map(); // entry.id → { entry, kind, count }
+  const seen = new Map();
+  const userLevelIdx = LEVELS.indexOf(userLevelCode);
   for (const tok of tokenize(text)) {
     if (tok.kind !== 'word') continue;
-    const c = classifyWord(tok.text, userLevelCode, progress);
-    if (c.kind !== 'target' && c.kind !== 'challenge') continue;
-    const key = c.entry.id;
+    const entry = lookupWord(tok.text);
+    if (!entry) continue;
+    const wordLevelIdx = LEVELS.indexOf(entry.level);
+    if (userLevelIdx >= 0 && wordLevelIdx < userLevelIdx) continue;
+    const kind = wordLevelIdx === userLevelIdx ? 'target' : 'challenge';
+    const key = entry.id;
     const existing = seen.get(key);
     if (existing) existing.count += 1;
-    else seen.set(key, { entry: c.entry, kind: c.kind, count: 1 });
+    else seen.set(key, { entry, kind, count: 1 });
   }
   return [...seen.values()].sort((a, b) => {
+    const aLearned = isLearned(progress[a.entry.id]);
+    const bLearned = isLearned(progress[b.entry.id]);
+    if (aLearned !== bLearned) return aLearned ? 1 : -1;
     if (a.kind !== b.kind) return a.kind === 'challenge' ? -1 : 1;
     return b.count - a.count;
   });
