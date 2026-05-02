@@ -3,6 +3,7 @@ import Logo from './Logo.jsx';
 const TABS = [
   { id: 'home', label: 'Home' },
   { id: 'review', label: 'Review' },
+  { id: 'read', label: 'Read' },
   { id: 'explore', label: 'Explore' },
   { id: 'stones', label: 'Stones' },
 ];

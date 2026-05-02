@@ -17,6 +17,7 @@ Gamified English vocabulary learning app with **CEFR levels**, **Anki-style spac
 - **🎤 On-device pronunciation scoring** — Whisper-tiny.en runs in your browser via [Transformers.js](https://huggingface.co/docs/transformers.js). Tap the mic, speak the word, get a 0–100 score with stars. ~92 MB model is downloaded once and cached. Zero audio leaves your device.
 - **🗣️ Read-aloud (TTS)** — every example sentence and headword has a button that triggers browser SpeechSynthesis.
 - **📚 Real-world usage examples** — every flashcard pulls live snippets from [Google Books](https://developers.google.com/books) (novels, textbooks, journals) and [Wikipedia](https://en.wikipedia.org/w/api.php) so you can see the word in actual published context, with a link back to the source.
+- **📖 Learn from Reading** — search any topic, pick a Wikipedia article (Simple English for A1/A2, full Wikipedia for B1+), and the article renders with **at-your-level words underlined in green** and **stretch words in amber wavy underline**. Tap any highlight for a definition, native + TTS pronunciation, and an "I know it" shortcut that adds the word to your SRS queue.
 - **Local-only progress** — everything saved in `localStorage`, no account, no backend.
 - **Docker-ready** — multi-stage Dockerfile with a `dev` profile (Vite HMR) and `prod` profile (nginx).
 

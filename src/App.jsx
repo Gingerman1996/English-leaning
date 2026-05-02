@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard.jsx';
 import ReviewSession from './components/ReviewSession.jsx';
 import WordExplorer from './components/WordExplorer.jsx';
 import MindStones from './components/MindStones.jsx';
+import Reader from './components/Reader.jsx';
 import { useLocalStorage } from './hooks/useStorage.js';
 import { ALL_WORDS } from './data/words.js';
 import { buildQueue, isLearned, summarize } from './utils/srs.js';
@@ -64,6 +65,9 @@ export default function App() {
                 onExit={exitReview}
                 settings={SETTINGS}
               />
+            )}
+            {tab === 'read' && (
+              <Reader progress={progress} setProgress={setProgress} />
             )}
             {tab === 'explore' && (
               <WordExplorer progress={progress} setProgress={setProgress} />

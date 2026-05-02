@@ -55,6 +55,8 @@ docker compose --profile dev  up --build   # vite HMR on :5173
 | Tweak the daily queue size / new-cards-per-day | `SETTINGS` in `src/App.jsx` |
 | Replace the dictionary source | `src/hooks/useDictionary.js` |
 | Replace the real-world examples source | `src/hooks/useContextExamples.js` |
+| Tweak the Reader article source | `src/hooks/useArticleSearch.js`, `useArticleContent.js` |
+| Adjust word-highlighting heuristics in the Reader | `src/utils/tokenizer.js` (lookup, stems, classify) |
 | Swap the speech model (e.g. whisper-base) | `src/hooks/useWhisper.js` (model id) |
 | Tune the pronunciation scoring rules | `src/utils/phonetics.js` |
 | Restyle the flashcard | `src/components/FlashCard.jsx` |
@@ -116,6 +118,36 @@ it's only fetched when the user clicks the mic.
 **Don't** introduce a server proxy for model files — the model URL is
 configured to go directly to the HF CDN and benefits from cross-origin
 caching. Adding a proxy would force every user to re-download.
+
+## Reader (Learn from Reading)
+
+`src/components/Reader.jsx` is a topic-driven reading practice surface:
+
+1. User types a topic → `useArticleSearch` hits MediaWiki search on
+   `simple.wikipedia.org` (A1/A2) or `en.wikipedia.org` (B1+).
+2. User picks a result → `useArticleContent` fetches the plain-text
+   extract via `prop=extracts&explaintext=1` and splits it into
+   paragraphs (drops boilerplate like "See also").
+3. Each paragraph is tokenized by `src/utils/tokenizer.js`, which
+   classifies every word against the user's current CEFR level:
+
+   | Class | Highlight | Meaning |
+   | --- | --- | --- |
+   | `target` | green underline | at the user's level, not yet learned |
+   | `challenge` | amber wavy underline | above the user's level |
+   | `learned` | none | user has graduated this word |
+   | `easy` | none | below the user's level |
+   | `unknown` | none | not in our CEFR corpus |
+
+4. Highlighted words are wrapped in `InteractiveWord`, which opens a
+   popover with the definition (via `useDictionary`), native audio +
+   browser TTS, and an "I know it" button that calls `review(state, 2)`
+   (Anki "Good") to push the card into the SRS pipeline.
+
+The lookup map (`WORD_INDEX`) is a module-level singleton built once
+at import. The naive stemmer in `tokenizer.js` handles trivial
+inflections (`running` → `run`, `studies` → `study`) — sufficient for
+Wikipedia text without pulling in a 200 KB NLP library.
 
 ## Free Dictionary API gotchas
 
