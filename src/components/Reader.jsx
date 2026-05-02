@@ -119,74 +119,83 @@ export default function Reader({ progress, setProgress }) {
     setPanel('lookup');
   }
 
-  if (selectedTitle && (article || loadingArticle)) {
-    return (
-      <ArticleView
-        article={article}
-        loading={loadingArticle}
-        error={articleError}
-        chosenLevel={chosenLevel}
-        progress={progress}
-        setProgress={setProgress}
-        reading={reading}
-        source={source}
-        onBack={() => setSelectedTitle(null)}
-      />
-    );
+  // Switching rail panels while reading an article should close the
+  // article view and take the user to the chosen panel.
+  function changePanel(next) {
+    setSelectedTitle(null);
+    setPanel(next);
   }
 
   const railItems = [
     { id: 'search', icon: '🔍', label: 'Search' },
-    { id: 'lookup', icon: '🔎', label: 'Look up word' },
+    { id: 'lookup', icon: '🔎', label: 'Look up' },
     { id: 'history', icon: '📚', label: 'History', badge: reading.state.history?.length || 0 },
     { id: 'progress', icon: '🎯', label: 'Progress', badge: reading.state.consecutivePasses || 0 },
   ];
 
+  const inArticle = !!(selectedTitle && (article || loadingArticle));
+
   return (
     <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
-      <ReaderRail items={railItems} active={panel} onChange={setPanel} />
+      <ReaderRail items={railItems} active={panel} onChange={changePanel} />
 
       <div className="min-w-0 flex-1 space-y-6">
-        {panel === 'search' && (
-          <SearchPanel
-            query={query}
-            setQuery={setQuery}
-            onSubmit={onSubmit}
-            pickSuggestion={pickSuggestion}
-            source={source}
-            setSource={setSource}
+        {inArticle ? (
+          <ArticleView
+            article={article}
+            loading={loadingArticle}
+            error={articleError}
             chosenLevel={chosenLevel}
-            setChosenLevel={setChosenLevel}
-            currentLevel={currentLevel}
-            settings={settings}
-            reading={reading}
-            sourceError={sourceError}
-            submitted={submitted}
-            results={results}
-            searching={searching}
-            onPickResult={(title) => setSelectedTitle(title)}
-          />
-        )}
-
-        {panel === 'lookup' && (
-          <LookupPanel
             progress={progress}
             setProgress={setProgress}
             reading={reading}
-            seedWord={seedLookup}
-            consumeSeed={() => setSeedLookup('')}
+            source={source}
+            onBack={() => setSelectedTitle(null)}
           />
-        )}
+        ) : (
+          <>
+            {panel === 'search' && (
+              <SearchPanel
+                query={query}
+                setQuery={setQuery}
+                onSubmit={onSubmit}
+                pickSuggestion={pickSuggestion}
+                source={source}
+                setSource={setSource}
+                chosenLevel={chosenLevel}
+                setChosenLevel={setChosenLevel}
+                currentLevel={currentLevel}
+                settings={settings}
+                reading={reading}
+                sourceError={sourceError}
+                submitted={submitted}
+                results={results}
+                searching={searching}
+                onPickResult={(title) => setSelectedTitle(title)}
+              />
+            )}
 
-        {panel === 'history' && (
-          <HistoryPanel
-            reading={reading}
-            onReopen={reopenArticle}
-          />
-        )}
+            {panel === 'lookup' && (
+              <LookupPanel
+                progress={progress}
+                setProgress={setProgress}
+                reading={reading}
+                seedWord={seedLookup}
+                consumeSeed={() => setSeedLookup('')}
+              />
+            )}
 
-        {panel === 'progress' && (
-          <ProgressPanel reading={reading} currentLevel={currentLevel} />
+            {panel === 'history' && (
+              <HistoryPanel
+                reading={reading}
+                onReopen={reopenArticle}
+              />
+            )}
+
+            {panel === 'progress' && (
+              <ProgressPanel reading={reading} currentLevel={currentLevel} />
+            )}
+          </>
         )}
       </div>
     </div>

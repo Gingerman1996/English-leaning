@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
 
-// Vertical activity bar for the Reader. Inspired by VS Code's leftmost
-// strip. On screens narrower than `sm`, it collapses to a horizontal pill
-// row above the main content.
+// Side rail for the Reader. Wide enough to show icon + label inline, so
+// users don't need to memorize what each icon means and there are no
+// hover tooltips that can collide with the panel content. On mobile it
+// collapses to a horizontal pill row.
 //
 // Each item: { id, label, icon, badge? }
 
@@ -12,7 +13,7 @@ export default function ReaderRail({ items, active, onChange }) {
       {/* Vertical rail — visible from sm+ */}
       <nav
         aria-label="Reader sections"
-        className="hidden shrink-0 sm:sticky sm:top-24 sm:flex sm:flex-col sm:items-stretch sm:gap-1 sm:self-start sm:rounded-3xl sm:border sm:border-white/10 sm:bg-white/[0.04] sm:p-2 sm:backdrop-blur-xl"
+        className="hidden w-44 shrink-0 sm:sticky sm:top-24 sm:flex sm:flex-col sm:gap-1 sm:self-start sm:rounded-3xl sm:border sm:border-white/10 sm:bg-white/[0.04] sm:p-2 sm:backdrop-blur-xl lg:w-48"
       >
         {items.map((item) => {
           const isActive = item.id === active;
@@ -20,34 +21,28 @@ export default function ReaderRail({ items, active, onChange }) {
             <button
               key={item.id}
               onClick={() => onChange(item.id)}
-              title={item.label}
-              aria-label={item.label}
               aria-pressed={isActive}
               className={[
-                'group relative flex h-12 w-12 items-center justify-center rounded-2xl text-xl transition',
+                'relative flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-left text-sm transition',
                 isActive
                   ? 'bg-white/15 text-white shadow-inner'
-                  : 'text-white/65 hover:bg-white/10 hover:text-white',
+                  : 'text-white/75 hover:bg-white/10 hover:text-white',
               ].join(' ')}
             >
               {/* Active indicator stripe on the left edge — VS Code-style. */}
               {isActive && (
                 <motion.span
                   layoutId="rail-indicator"
-                  className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full bg-fuchsia-400"
+                  className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-fuchsia-400"
                 />
               )}
-              <span aria-hidden>{item.icon}</span>
+              <span className="text-base leading-none" aria-hidden>{item.icon}</span>
+              <span className="flex-1 truncate font-medium">{item.label}</span>
               {item.badge != null && item.badge > 0 && (
-                <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-fuchsia-500 px-1 text-[9px] font-bold text-white">
+                <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-fuchsia-500 px-1 text-[10px] font-bold text-white">
                   {item.badge > 99 ? '99+' : item.badge}
                 </span>
               )}
-
-              {/* Hover tooltip — only for sm+ where the rail is icon-only. */}
-              <span className="pointer-events-none absolute left-full top-1/2 z-10 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg bg-slate-900/95 px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow transition group-hover:opacity-100">
-                {item.label}
-              </span>
             </button>
           );
         })}
@@ -75,7 +70,7 @@ export default function ReaderRail({ items, active, onChange }) {
               <span aria-hidden>{item.icon}</span>
               <span>{item.label}</span>
               {item.badge != null && item.badge > 0 && (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-fuchsia-500 px-1 text-[9px] font-bold text-white">
+                <span className="inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-fuchsia-500 px-1 text-[9px] font-bold text-white">
                   {item.badge}
                 </span>
               )}
