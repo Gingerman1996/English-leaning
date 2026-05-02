@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDictionary, playAudio } from '../hooks/useDictionary.js';
 import { speak, ttsAvailable } from '../hooks/useSpeech.js';
@@ -16,13 +17,46 @@ const KIND_STYLES = {
 
 export default function InteractiveWord({ token, kind, entry, progress, setProgress }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const buttonRef = useRef(null);
+  const popoverRef = useRef(null);
 
-  // Click outside to close, and Escape key.
+  // Recompute popover position whenever the popover is open. We portal it to
+  // document.body so it isn't trapped by ancestor stacking contexts (the
+  // article hero uses `glass-strong`, which sets `backdrop-filter` and
+  // creates a stacking context that previously clipped the popover behind
+  // the next section). Using page-relative coords means the popover follows
+  // the document scroll.
+  useLayoutEffect(() => {
+    if (!open || !buttonRef.current) return;
+    const compute = () => {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const POPOVER_WIDTH = 288; // matches w-72
+      // Center on the word horizontally; clamp 8 px from viewport edges.
+      let left = rect.left + window.scrollX + rect.width / 2;
+      const halfW = POPOVER_WIDTH / 2;
+      const minLeft = window.scrollX + halfW + 8;
+      const maxLeft = window.scrollX + window.innerWidth - halfW - 8;
+      if (left < minLeft) left = minLeft;
+      if (left > maxLeft) left = maxLeft;
+      setPos({ top: rect.bottom + window.scrollY + 8, left });
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    window.addEventListener('scroll', compute, true);
+    return () => {
+      window.removeEventListener('resize', compute);
+      window.removeEventListener('scroll', compute, true);
+    };
+  }, [open]);
+
+  // Click outside (anywhere not on the button or the popover) + Escape closes.
   useEffect(() => {
     if (!open) return;
     function onDoc(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      const inButton = buttonRef.current && buttonRef.current.contains(e.target);
+      const inPopover = popoverRef.current && popoverRef.current.contains(e.target);
+      if (!inButton && !inPopover) setOpen(false);
     }
     function onKey(e) {
       if (e.key === 'Escape') setOpen(false);
@@ -50,8 +84,9 @@ export default function InteractiveWord({ token, kind, entry, progress, setProgr
   }
 
   return (
-    <span ref={ref} className="relative inline-block">
+    <>
       <button
+        ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
         className={className + ' bg-transparent border-0 p-0 m-0 text-inherit font-inherit'}
         type="button"
@@ -59,19 +94,28 @@ export default function InteractiveWord({ token, kind, entry, progress, setProgr
         {token}
       </button>
       <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: 4, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute left-1/2 z-40 mt-2 w-72 -translate-x-1/2 rounded-2xl border border-white/15 bg-slate-900/95 p-3 text-left shadow-card backdrop-blur-xl"
-          >
-            <Popover entry={entry} kind={kind} onClose={() => setOpen(false)} onMarkKnown={markKnown} />
-          </motion.div>
-        )}
+        {open &&
+          createPortal(
+            <motion.div
+              ref={popoverRef}
+              initial={{ opacity: 0, y: 4, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.96 }}
+              transition={{ duration: 0.15 }}
+              style={{
+                position: 'absolute',
+                top: pos.top,
+                left: pos.left,
+                transform: 'translateX(-50%)',
+              }}
+              className="z-50 w-72 rounded-2xl border border-white/15 bg-slate-900/95 p-3 text-left shadow-card backdrop-blur-xl"
+            >
+              <Popover entry={entry} kind={kind} onClose={() => setOpen(false)} onMarkKnown={markKnown} />
+            </motion.div>,
+            document.body
+          )}
       </AnimatePresence>
-    </span>
+    </>
   );
 }
 
@@ -89,12 +133,12 @@ function Popover({ entry, kind, onClose, onMarkKnown }) {
         >
           {entry.level} · {kind === 'challenge' ? 'above your level' : 'your level'}
         </span>
-        <button onClick={onClose} className="text-white/40 hover:text-white">×</button>
+        <button onClick={onClose} className="text-white/50 hover:text-white">×</button>
       </div>
       <div className="flex items-baseline gap-2">
         <span className="font-display text-xl font-bold">{entry.word}</span>
         {data?.phonetic && <span className="text-xs text-white/55">{data.phonetic}</span>}
-        <span className="ml-auto text-[10px] uppercase tracking-widest text-white/45">{entry.pos}</span>
+        <span className="ml-auto text-[10px] uppercase tracking-widest text-white/55">{entry.pos}</span>
       </div>
       <div className="mt-2 min-h-[2.5em] text-white/85">
         {loading && <span className="text-white/55">Loading meaning…</span>}

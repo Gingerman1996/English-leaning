@@ -219,14 +219,6 @@ function ArticleSidebar({ progress, setProgress, reading }) {
   return (
     <aside className="hidden w-full shrink-0 sm:sticky sm:top-24 sm:block sm:w-72 sm:self-start lg:w-80">
       <div className="space-y-3">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl">
-          <h2 className="text-xs uppercase tracking-[0.18em] text-white/65">
-            🔎 Look up any word
-          </h2>
-          <p className="mt-1 text-[11px] text-white/60">
-            See a word that's not highlighted? Type it here while you read.
-          </p>
-        </div>
         <WordLookup
           progress={progress}
           setProgress={setProgress}
