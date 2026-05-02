@@ -61,6 +61,34 @@ export function isLearned(state) {
   return state && state.repetitions >= 1 && state.ease >= 2.0;
 }
 
+// Per-word mastery score (0 → 1.5) used by the Chef level.
+// Maps the SM-2 ease to a points-per-word value:
+//
+//   ease 1.5 (Again-heavy)  → 0      (not really learned)
+//   ease 2.0                → 0.5    (Hard territory)
+//   ease 2.5 (default Good) → 1.0    (matches the binary "learned" count)
+//   ease 3.0 (Easy a few times) → 1.5  (mastered)
+//
+// Repeated Easy ratings bump ease by +0.15 each time, so a word the user
+// keeps marking Easy gradually compounds toward 1.5. Hard / Again ratings
+// pull ease down, eroding the score. This is the "your ratings actually
+// matter for the Chef level" wiring the user asked for.
+export function masteryScore(state) {
+  if (!state || state.repetitions < 1) return 0;
+  if (state.ease < 2.0) return 0;
+  return Math.max(0, Math.min(1.5, state.ease - 1.5));
+}
+
+// Sum of mastery across the whole progress map. This is the value the
+// LevelChef + CEFR-tier thresholds are now indexed against.
+export function chefScore(progress) {
+  let total = 0;
+  for (const s of Object.values(progress || {})) {
+    total += masteryScore(s);
+  }
+  return total;
+}
+
 export function isMature(state) {
   return state && state.interval >= 21;
 }

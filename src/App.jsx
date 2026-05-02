@@ -9,7 +9,7 @@ import SettingsModal from './components/SettingsModal.jsx';
 import Toast from './components/Toast.jsx';
 import { useLocalStorage } from './hooks/useStorage.js';
 import { useSettings } from './hooks/useSettings.js';
-import { isLearned, summarize } from './utils/srs.js';
+import { chefScore, isLearned, summarize } from './utils/srs.js';
 
 const SETTINGS = { newPerDay: 12, max: 80 };
 
@@ -24,6 +24,7 @@ export default function App() {
     () => Object.values(progress).filter(isLearned).length,
     [progress]
   );
+  const chefXP = useMemo(() => chefScore(progress), [progress]);
 
   function startReview() {
     setTab('review');
@@ -65,6 +66,7 @@ export default function App() {
                 progress={progress}
                 summary={summary}
                 learnedCount={learnedCount}
+                chefXP={chefXP}
                 onStartReview={startReview}
                 onExplore={() => setTab('explore')}
                 onRead={() => setTab('read')}

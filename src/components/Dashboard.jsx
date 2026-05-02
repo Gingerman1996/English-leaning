@@ -5,7 +5,7 @@ import StatCard from './StatCard.jsx';
 import { LEVEL_META } from '../data/levels.js';
 import { ALL_WORDS } from '../data/words.js';
 
-export default function Dashboard({ progress, summary, learnedCount, onStartReview, onExplore, onRead }) {
+export default function Dashboard({ progress, summary, learnedCount, chefXP, onStartReview, onExplore, onRead }) {
   const totalWords = ALL_WORDS.length;
   const seenPct = Math.round((summary.seen / totalWords) * 100);
   const isFreshUser = summary.seen === 0;
@@ -45,16 +45,16 @@ export default function Dashboard({ progress, summary, learnedCount, onStartRevi
             accent="from-sky-400 to-indigo-500"
           />
           <StatCard
-            label="Avg ease"
-            value={avgEase(progress)}
-            sub="Higher = better recall"
+            label="Chef XP"
+            value={Number.isInteger(chefXP || 0) ? (chefXP || 0).toLocaleString() : (chefXP || 0).toFixed(1)}
+            sub={`Avg ease ${avgEase(progress)}`}
             icon="✨"
             accent="from-amber-400 to-orange-500"
           />
         </div>
       )}
 
-      <LevelChef learnedCount={learnedCount} />
+      <LevelChef chefXP={chefXP} learnedCount={learnedCount} />
 
       <MindStones learnedCount={learnedCount} />
 

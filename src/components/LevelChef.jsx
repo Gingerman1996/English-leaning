@@ -6,11 +6,19 @@ import {
   progressInLevel,
 } from '../data/levels.js';
 
-export default function LevelChef({ learnedCount }) {
-  const current = levelForLearnedCount(learnedCount);
-  const next = nextLevelForLearnedCount(learnedCount);
-  const progress = progressInLevel(learnedCount);
-  const remaining = next ? Math.max(0, next.threshold - learnedCount) : 0;
+// `chefXP` is the ease-weighted score from utils/srs.js → chefScore(progress).
+// We index the same CEFR thresholds against it so the bar progresses based on
+// how well the user actually rates their cards (Easy contributes more, Hard
+// contributes less, Again pulls it down).
+export default function LevelChef({ chefXP, learnedCount }) {
+  const score = chefXP ?? learnedCount ?? 0;
+  const current = levelForLearnedCount(score);
+  const next = nextLevelForLearnedCount(score);
+  const progress = progressInLevel(score);
+  const remaining = next ? Math.max(0, next.threshold - score) : 0;
+
+  // Format Chef XP with one decimal so 47.5 doesn't round to a flat 48.
+  const fmt = (n) => Number.isInteger(n) ? n.toLocaleString() : n.toFixed(1);
 
   return (
     <div className="glass relative overflow-hidden rounded-3xl p-6">
@@ -43,10 +51,10 @@ export default function LevelChef({ learnedCount }) {
           <p className="max-w-xl text-sm leading-relaxed text-white/75">{current.description}</p>
 
           <div className="mt-3">
-            <div className="flex items-center justify-between text-xs text-white/60">
+            <div className="flex items-center justify-between text-xs text-white/65">
               <span>
-                {learnedCount.toLocaleString()} learned
-                {next && ` · ${remaining.toLocaleString()} to ${next.code}`}
+                <strong className="text-white">{fmt(score)}</strong> Chef XP
+                {next && ` · ${fmt(remaining)} to ${next.code}`}
               </span>
               <span>{Math.round(progress * 100)}%</span>
             </div>
@@ -58,6 +66,9 @@ export default function LevelChef({ learnedCount }) {
                 className={`h-full rounded-full bg-gradient-to-r ${current.accent}`}
               />
             </div>
+            <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-white/55">
+              ratings: Easy gives more · Hard gives less · Again pulls back
+            </div>
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -68,9 +79,9 @@ export default function LevelChef({ learnedCount }) {
                   'rounded-full px-2.5 py-1 text-[11px] font-semibold',
                   l.code === current.code
                     ? 'bg-white text-slate-900 shadow'
-                    : learnedCount >= l.threshold
+                    : score >= l.threshold
                     ? 'bg-white/15 text-white/80'
-                    : 'bg-white/5 text-white/40',
+                    : 'bg-white/5 text-white/45',
                 ].join(' ')}
               >
                 {l.code}
