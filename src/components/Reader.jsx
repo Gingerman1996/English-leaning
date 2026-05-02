@@ -135,11 +135,17 @@ export default function Reader({ progress, setProgress }) {
 
   const inArticle = !!(selectedTitle && (article || loadingArticle));
 
-  // Reading the article: rail on the left for quick nav, article on the right.
+  // Reading the article: focus mode — no panel rail. Instead, a sticky
+  // "Look up any word" sidebar sits on the left so the reader can drop in
+  // unfamiliar words without scrolling to the bottom of the article.
   if (inArticle) {
     return (
       <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
-        <ReaderRail items={railItems} active={panel} onChange={changePanel} />
+        <ArticleSidebar
+          progress={progress}
+          setProgress={setProgress}
+          reading={reading}
+        />
         <div className="min-w-0 flex-1 space-y-6">
           <ArticleView
             article={article}
@@ -202,6 +208,70 @@ export default function Reader({ progress, setProgress }) {
         <ProgressPanel reading={reading} currentLevel={currentLevel} />
       )}
     </div>
+  );
+}
+
+// Sticky aside shown next to the article. Hosts the WordLookup input + a
+// compact recent-lookups chip row so the reader can investigate any word
+// without leaving the article scroll position.
+function ArticleSidebar({ progress, setProgress, reading }) {
+  const recents = (reading.state.lookupHistory || []).slice(0, 12);
+  return (
+    <aside className="hidden w-full shrink-0 sm:sticky sm:top-24 sm:block sm:w-72 sm:self-start lg:w-80">
+      <div className="space-y-3">
+        <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl">
+          <h2 className="text-xs uppercase tracking-[0.18em] text-white/65">
+            🔎 Look up any word
+          </h2>
+          <p className="mt-1 text-[11px] text-white/60">
+            See a word that's not highlighted? Type it here while you read.
+          </p>
+        </div>
+        <WordLookup
+          progress={progress}
+          setProgress={setProgress}
+          onLookup={reading.recordLookup}
+        />
+        {recents.length > 0 && (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-[0.18em] text-white/55">
+                Recent · {recents.length}
+              </span>
+              <button
+                onClick={reading.clearLookupHistory}
+                className="text-[10px] text-white/45 hover:text-white"
+              >
+                Clear
+              </button>
+            </div>
+            <ul className="flex flex-wrap gap-1">
+              {recents.map((r) => {
+                const meta = r.level ? LEVEL_META.find((l) => l.code === r.level) : null;
+                return (
+                  <li key={`${r.word}-${r.ts}`}>
+                    <button
+                      onClick={() => reading.recordLookup({ word: r.word, level: meta?.code || null })}
+                      className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[11px] hover:bg-white/10"
+                      title={`Re-look up "${r.word}"`}
+                    >
+                      <span className="font-medium">{r.word}</span>
+                      {meta && (
+                        <span
+                          className={`rounded-full bg-gradient-to-r ${meta.accent} px-1 text-[8px] font-bold uppercase text-white`}
+                        >
+                          {meta.code}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+    </aside>
   );
 }
 
@@ -899,7 +969,8 @@ function ArticleView({ article, loading, error, chosenLevel, progress, setProgre
         </div>
       </div>
 
-      <WordLookup progress={progress} setProgress={setProgress} />
+      {/* WordLookup moved to the article-side sidebar (left). It's now
+          always visible while reading, no need to scroll to find it. */}
 
       <VocabChecklist
         words={highlightedWords}
