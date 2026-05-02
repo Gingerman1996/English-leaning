@@ -6,6 +6,7 @@ import ReviewSession from './components/ReviewSession.jsx';
 import WordExplorer from './components/WordExplorer.jsx';
 import Reader from './components/Reader.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
+import Toast from './components/Toast.jsx';
 import { useLocalStorage } from './hooks/useStorage.js';
 import { useSettings } from './hooks/useSettings.js';
 import { isLearned, summarize } from './utils/srs.js';
@@ -47,6 +48,8 @@ export default function App() {
         settings={settings}
         setSettings={setSettings}
       />
+
+      <Toast />
 
       <main className="mx-auto max-w-6xl px-5 py-8 sm:py-10">
         <AnimatePresence mode="wait">

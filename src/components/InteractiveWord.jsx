@@ -5,7 +5,8 @@ import { useDictionary, playAudio } from '../hooks/useDictionary.js';
 import { speak, ttsAvailable } from '../hooks/useSpeech.js';
 import { newCardState, review } from '../utils/srs.js';
 import { LEVEL_META } from '../data/levels.js';
-import RatingButtons from './RatingButtons.jsx';
+import RatingButtons, { RATINGS } from './RatingButtons.jsx';
+import { showToast } from '../hooks/useToast.js';
 
 const POPOVER_WIDTH = 288; // matches `w-72`
 
@@ -85,6 +86,8 @@ export default function InteractiveWord({ token, kind, entry, progress, setProgr
     const prev = progress[entry.id] || newCardState();
     const next = review(prev, rating);
     setProgress({ ...progress, [entry.id]: next });
+    const r = RATINGS.find((x) => x.rating === rating);
+    showToast(`✓ "${entry.word}" recorded as ${r?.label || 'Good'}`, { tone: r?.tone || 'emerald' });
     setOpen(false);
   }
 

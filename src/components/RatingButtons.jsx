@@ -6,7 +6,7 @@
 //   compact = true   — used in popovers where vertical space is tight,
 //                    single line per button ("Again", "Hard", ...).
 
-const RATINGS = [
+export const RATINGS = [
   { label: 'Again', sub: 'forgot',   tone: 'rose',    rating: 0 },
   { label: 'Hard',  sub: 'tough',    tone: 'amber',   rating: 1 },
   { label: 'Good',  sub: 'recalled', tone: 'emerald', rating: 2 },
