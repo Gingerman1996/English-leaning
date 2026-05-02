@@ -55,8 +55,11 @@ docker compose --profile dev  up --build   # vite HMR on :5173
 | Tweak the daily queue size / new-cards-per-day | `SETTINGS` in `src/App.jsx` |
 | Replace the dictionary source | `src/hooks/useDictionary.js` |
 | Replace the real-world examples source | `src/hooks/useContextExamples.js` |
-| Tweak the Reader article source | `src/hooks/useArticleSearch.js`, `useArticleContent.js` |
+| Tweak the Wikipedia article source | `src/hooks/useArticleSearch.js`, `useArticleContent.js` |
+| Tweak the Guardian article source | `src/hooks/useGuardianArticles.js` |
+| Add user-settable runtime config | `src/hooks/useSettings.js` + `src/components/SettingsModal.jsx` |
 | Adjust word-highlighting heuristics in the Reader | `src/utils/tokenizer.js` (lookup, stems, classify) |
+| Tune auto level-up thresholds | `src/hooks/useReadingProgress.js` (PASS_THRESHOLD, PROMOTE_AFTER_PASSES) |
 | Swap the speech model (e.g. whisper-base) | `src/hooks/useWhisper.js` (model id) |
 | Tune the pronunciation scoring rules | `src/utils/phonetics.js` |
 | Restyle the flashcard | `src/components/FlashCard.jsx` |

@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useArticleSearch } from '../hooks/useArticleSearch.js';
 import { useArticleContent } from '../hooks/useArticleContent.js';
+import { useGuardianArticles } from '../hooks/useGuardianArticles.js';
+import { useSettings } from '../hooks/useSettings.js';
 import {
   collectHighlightedWords,
   countHighlights,
@@ -20,6 +22,7 @@ import {
 } from '../hooks/useReadingProgress.js';
 import VocabChecklist from './VocabChecklist.jsx';
 import WordLookup from './WordLookup.jsx';
+import SettingsModal from './SettingsModal.jsx';
 
 const SUGGESTED_TOPICS = [
   'space exploration',
@@ -42,8 +45,11 @@ function deriveLevel(progress, override) {
 
 export default function Reader({ progress, setProgress }) {
   const reading = useReadingProgress();
+  const [settings, setSettings] = useSettings();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const currentLevel = deriveLevel(progress, reading.state.levelOverride);
   const [chosenLevel, setChosenLevel] = useState(currentLevel);
+  const [source, setSource] = useState('wikipedia'); // 'wikipedia' | 'guardian'
 
   // Sync chosen level when override changes (e.g. after auto-promotion).
   useEffect(() => {
@@ -55,11 +61,29 @@ export default function Reader({ progress, setProgress }) {
   const [submitted, setSubmitted] = useState('');
   const [selectedTitle, setSelectedTitle] = useState(null);
 
-  const { results, loading: searching } = useArticleSearch(submitted, chosenLevel);
-  const { article, loading: loadingArticle, error: articleError } = useArticleContent(
-    selectedTitle,
+  const wiki = useArticleSearch(source === 'wikipedia' ? submitted : '', chosenLevel);
+  const wikiContent = useArticleContent(
+    source === 'wikipedia' ? selectedTitle : null,
     chosenLevel
   );
+  const guardian = useGuardianArticles(
+    source === 'guardian' ? submitted : '',
+    settings.guardianApiKey
+  );
+
+  // Unified shape for the rest of the component.
+  const results = source === 'wikipedia' ? wiki.results : guardian.results;
+  const searching = source === 'wikipedia' ? wiki.loading : guardian.loading;
+  const sourceError = source === 'guardian' ? guardian.error : null;
+
+  // Guardian's search response already includes the article body, so the
+  // "content" lookup is just an in-memory find. Wikipedia needs a 2nd fetch.
+  const article =
+    source === 'wikipedia'
+      ? wikiContent.article
+      : guardian.results.find((r) => r.title === selectedTitle) || null;
+  const loadingArticle = source === 'wikipedia' ? wikiContent.loading : false;
+  const articleError = source === 'wikipedia' ? wikiContent.error : null;
 
   function onSubmit(e) {
     e.preventDefault();
@@ -90,22 +114,48 @@ export default function Reader({ progress, setProgress }) {
 
   return (
     <div className="space-y-6">
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        settings={settings}
+        setSettings={setSettings}
+      />
+
       <div className="glass-strong relative overflow-hidden rounded-3xl p-6">
         <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-fuchsia-500/30 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-16 -left-16 h-56 w-56 rounded-full bg-indigo-500/30 blur-3xl" />
         <div className="relative">
-          <h1 className="heading text-3xl">Learn from Reading</h1>
-          <p className="mt-1 max-w-2xl text-sm text-white/65">
-            Pick any topic — we'll find an article at your reading level and highlight the words
-            you might not know yet. Tick the ones you know in the checklist; if you master 90% of
-            three articles in a row, you'll auto-level-up.
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h1 className="heading text-3xl">Learn from Reading</h1>
+              <p className="mt-1 max-w-2xl text-sm text-white/65">
+                Pick any topic — we'll find an article at your reading level and highlight the words
+                you might not know yet. Tick the ones you know in the checklist; if you master 90% of
+                three articles in a row, you'll auto-level-up.
+              </p>
+            </div>
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="shrink-0 rounded-full bg-white/10 p-2 text-sm hover:bg-white/15"
+              title="Settings"
+            >
+              ⚙️
+            </button>
+          </div>
+
+          <SourcePicker source={source} setSource={setSource} />
+
+          {source === 'guardian' && !settings.guardianApiKey && (
+            <div className="mt-3 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-100">
+              No Guardian API key set. <button onClick={() => setSettingsOpen(true)} className="underline font-semibold">Open settings</button> to add one (free, 1 minute).
+            </div>
+          )}
 
           <form onSubmit={onSubmit} className="mt-5 flex flex-wrap items-center gap-2">
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search a topic, e.g. 'cooking', 'space'…"
+              placeholder={source === 'guardian' ? 'Search Guardian articles…' : "Search a topic, e.g. 'cooking', 'space'…"}
               className="flex-1 min-w-[14rem] rounded-2xl border border-white/15 bg-black/30 px-4 py-2.5 text-sm placeholder:text-white/40 focus:border-white/30 focus:outline-none"
             />
             <LevelPicker
@@ -130,12 +180,21 @@ export default function Reader({ progress, setProgress }) {
               </button>
             ))}
           </div>
+
+          {source === 'guardian' && (chosenLevel === 'A1' || chosenLevel === 'A2') && (
+            <p className="mt-3 text-[11px] text-amber-200/80">
+              Heads up: Guardian articles use full journalistic English — usually too advanced for {chosenLevel}.
+              Wikipedia (Simple English) is a softer landing for beginners.
+            </p>
+          )}
         </div>
       </div>
 
       <PromotionStreak reading={reading} currentLevel={currentLevel} />
 
-      {!submitted && <Welcome />}
+      {sourceError && <SourceError error={sourceError} onOpenSettings={() => setSettingsOpen(true)} />}
+
+      {!submitted && <Welcome source={source} />}
 
       {submitted && (
         <SearchResults
@@ -144,8 +203,47 @@ export default function Reader({ progress, setProgress }) {
           loading={searching}
           onPick={(title) => setSelectedTitle(title)}
           chosenLevel={chosenLevel}
+          source={source}
         />
       )}
+    </div>
+  );
+}
+
+function SourcePicker({ source, setSource }) {
+  return (
+    <div className="mt-4 inline-flex rounded-2xl border border-white/10 bg-black/20 p-1">
+      <button
+        onClick={() => setSource('wikipedia')}
+        className={[
+          'rounded-xl px-3 py-1.5 text-xs font-semibold transition',
+          source === 'wikipedia' ? 'bg-white text-slate-900 shadow' : 'text-white/65 hover:text-white',
+        ].join(' ')}
+      >
+        📰 Wikipedia
+      </button>
+      <button
+        onClick={() => setSource('guardian')}
+        className={[
+          'rounded-xl px-3 py-1.5 text-xs font-semibold transition',
+          source === 'guardian' ? 'bg-white text-slate-900 shadow' : 'text-white/65 hover:text-white',
+        ].join(' ')}
+      >
+        🗞️ Guardian
+      </button>
+    </div>
+  );
+}
+
+function SourceError({ error, onOpenSettings }) {
+  if (error === 'missing-key') return null; // already covered by banner above
+  let msg = error;
+  if (error === 'invalid-key') msg = 'Guardian API rejected the key. Open Settings to fix it.';
+  if (error === 'rate-limited') msg = 'Guardian API rate limit hit (test keys are shared). Try again in a minute or use your own key.';
+  return (
+    <div className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm text-rose-100">
+      {msg}{' '}
+      <button onClick={onOpenSettings} className="underline font-semibold">Open settings</button>
     </div>
   );
 }
@@ -203,19 +301,20 @@ function LevelPicker({ chosen, setChosen, currentLevel }) {
   );
 }
 
-function Welcome() {
+function Welcome({ source }) {
   return (
     <div className="glass rounded-3xl p-6 text-center">
       <div className="text-4xl">📖</div>
       <p className="mt-3 text-sm text-white/65">
-        Search a topic above to start. Beginner levels (A1, A2) read from Simple English Wikipedia;
-        intermediate and advanced read from full Wikipedia.
+        {source === 'guardian'
+          ? 'Search a topic above to pull the latest journalism from The Guardian. Best for B1+ readers — full English, fresh news.'
+          : 'Search a topic above to start. Beginner levels (A1, A2) read from Simple English Wikipedia; intermediate and advanced read from full Wikipedia.'}
       </p>
     </div>
   );
 }
 
-function SearchResults({ query, results, loading, onPick, chosenLevel }) {
+function SearchResults({ query, results, loading, onPick, chosenLevel, source }) {
   if (loading) {
     return (
       <div className="glass rounded-3xl p-6 text-sm text-white/60">
@@ -234,7 +333,7 @@ function SearchResults({ query, results, loading, onPick, chosenLevel }) {
     <div className="grid gap-3 sm:grid-cols-2">
       {results.map((r, i) => (
         <motion.button
-          key={r.title}
+          key={`${source}-${r.title}-${i}`}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.04 }}
@@ -244,10 +343,19 @@ function SearchResults({ query, results, loading, onPick, chosenLevel }) {
           <div className="flex items-baseline justify-between gap-3">
             <h3 className="font-display text-lg font-semibold">{r.title}</h3>
             <span className="text-[11px] text-white/45 whitespace-nowrap">
-              {r.wordcount.toLocaleString()} words
+              {(r.wordcount || 0).toLocaleString()} words
             </span>
           </div>
-          {r.snippet && <p className="mt-1 line-clamp-3 text-sm text-white/65">{r.snippet}…</p>}
+          {(r.trailText || r.snippet) && (
+            <p className="mt-1 line-clamp-3 text-sm text-white/65">
+              {r.trailText || r.snippet}{!r.trailText && '…'}
+            </p>
+          )}
+          {source === 'guardian' && (r.section || r.publicationDate) && (
+            <p className="mt-2 text-[11px] text-white/45">
+              {r.section}{r.section && r.publicationDate && ' · '}{r.publicationDate}
+            </p>
+          )}
         </motion.button>
       ))}
     </div>
