@@ -5,6 +5,7 @@ import { speak, ttsAvailable } from '../hooks/useSpeech.js';
 import { lookupWord } from '../utils/tokenizer.js';
 import { newCardState, review } from '../utils/srs.js';
 import { LEVEL_META } from '../data/levels.js';
+import RatingButtons from './RatingButtons.jsx';
 
 // Free-form lookup for any word in the article that ISN'T highlighted —
 // proper nouns, technical terms, conjugations our stemmer missed, or words
@@ -93,10 +94,10 @@ function LookupResult({ word, progress, setProgress, onClose }) {
   const meta = entry ? LEVEL_META.find((l) => l.code === entry.level) : null;
   const def = data?.definitions?.[0]?.text;
 
-  function markKnown() {
+  function rate(rating) {
     if (!entry) return;
     const prev = progress[entry.id];
-    const next = review(prev || newCardState(), 2);
+    const next = review(prev || newCardState(), rating);
     setProgress({ ...progress, [entry.id]: next });
   }
 
@@ -147,15 +148,15 @@ function LookupResult({ word, progress, setProgress, onClose }) {
             🗣️ say
           </button>
         )}
-        {entry && (
-          <button
-            onClick={markKnown}
-            className="ml-auto rounded-full bg-emerald-500/25 px-3 py-1 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/35"
-          >
-            ✓ I know it
-          </button>
-        )}
       </div>
+      {entry && (
+        <div className="mt-3 border-t border-white/10 pt-2">
+          <div className="mb-1 text-[10px] uppercase tracking-[0.16em] text-white/55">
+            How well did you recall it?
+          </div>
+          <RatingButtons compact onRate={rate} />
+        </div>
+      )}
     </div>
   );
 }

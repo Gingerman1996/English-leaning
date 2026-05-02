@@ -79,10 +79,10 @@ export default function InteractiveWord({ token, kind, entry, progress, setProgr
     return token;
   }
 
-  function markKnown() {
+  function rateWord(rating) {
     if (!entry) return;
     const prev = progress[entry.id] || newCardState();
-    const next = review(prev, 2); // Good
+    const next = review(prev, rating);
     setProgress({ ...progress, [entry.id]: next });
     setOpen(false);
   }
@@ -107,7 +107,7 @@ export default function InteractiveWord({ token, kind, entry, progress, setProgr
             style={{ position: 'absolute', top: pos.top, left: pos.left }}
             className="z-50 w-72 rounded-2xl border border-white/15 bg-slate-900/95 p-3 text-left shadow-card backdrop-blur-xl"
           >
-            <Popover entry={entry} kind={kind} onClose={() => setOpen(false)} onMarkKnown={markKnown} />
+            <Popover entry={entry} kind={kind} onClose={() => setOpen(false)} onRate={rateWord} />
           </motion.div>,
           document.body
         )}
@@ -115,7 +115,7 @@ export default function InteractiveWord({ token, kind, entry, progress, setProgr
   );
 }
 
-function Popover({ entry, kind, onClose, onMarkKnown }) {
+function Popover({ entry, kind, onClose, onRate }) {
   const { data, loading } = useDictionary(entry.word, entry.pos);
   const meta = LEVEL_META.find((l) => l.code === entry.level);
 
@@ -160,13 +160,12 @@ function Popover({ entry, kind, onClose, onMarkKnown }) {
             🗣️ say
           </button>
         )}
-        <button
-          onClick={onMarkKnown}
-          className="ml-auto rounded-full bg-emerald-500/25 px-3 py-1 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/35"
-          title="Mark as known — adds it to your SRS as 'Good'"
-        >
-          ✓ I know it
-        </button>
+      </div>
+      <div className="mt-2 border-t border-white/10 pt-2">
+        <div className="mb-1 text-[10px] uppercase tracking-[0.16em] text-white/55">
+          How well did you recall it?
+        </div>
+        <RatingButtons compact onRate={onRate} />
       </div>
     </div>
   );

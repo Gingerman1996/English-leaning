@@ -4,6 +4,7 @@ import { LEVEL_META } from '../data/levels.js';
 import { speak, ttsAvailable } from '../hooks/useSpeech.js';
 import PronunciationCheck from './PronunciationCheck.jsx';
 import ContextExamples from './ContextExamples.jsx';
+import RatingButtons from './RatingButtons.jsx';
 
 function LevelChip({ code }) {
   const meta = LEVEL_META.find((l) => l.code === code);
@@ -159,33 +160,7 @@ export default function FlashCard({ word, revealed, onReveal, onRate, onSkip, qu
 
                 <PronunciationCheck word={word.word} />
 
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { label: 'Again', sub: 'forgot', tone: 'rose', rating: 0 },
-                    { label: 'Hard', sub: 'tough', tone: 'amber', rating: 1 },
-                    { label: 'Good', sub: 'recalled', tone: 'emerald', rating: 2 },
-                    { label: 'Easy', sub: 'mastered', tone: 'sky', rating: 3 },
-                  ].map((b) => (
-                    <button
-                      key={b.label}
-                      onClick={() => onRate(b.rating)}
-                      className={[
-                        'group flex flex-col items-center justify-center rounded-2xl border border-white/10 px-2 py-3 text-sm font-semibold transition hover:-translate-y-0.5',
-                        b.tone === 'rose' && 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-100',
-                        b.tone === 'amber' && 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-100',
-                        b.tone === 'emerald' && 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100',
-                        b.tone === 'sky' && 'bg-sky-500/15 hover:bg-sky-500/25 text-sky-100',
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                    >
-                      <span>{b.label}</span>
-                      <span className="text-[10px] font-normal opacity-70 group-hover:opacity-100">
-                        {b.sub}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                <RatingButtons onRate={onRate} />
               </motion.div>
             )}
           </AnimatePresence>
