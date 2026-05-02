@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+
+const POPOVER_WIDTH = 288; // matches `w-72`
 import { useDictionary, playAudio } from '../hooks/useDictionary.js';
 import { speak, ttsAvailable } from '../hooks/useSpeech.js';
 import { newCardState, review } from '../utils/srs.js';
@@ -31,12 +33,14 @@ export default function InteractiveWord({ token, kind, entry, progress, setProgr
     if (!open || !buttonRef.current) return;
     const compute = () => {
       const rect = buttonRef.current.getBoundingClientRect();
-      const POPOVER_WIDTH = 288; // matches w-72
-      // Center on the word horizontally; clamp 8 px from viewport edges.
-      let left = rect.left + window.scrollX + rect.width / 2;
-      const halfW = POPOVER_WIDTH / 2;
-      const minLeft = window.scrollX + halfW + 8;
-      const maxLeft = window.scrollX + window.innerWidth - halfW - 8;
+      // We compute the left edge directly — no CSS transform on the popover,
+      // because that would clash with motion's scale/translateY animation
+      // (transforms can't be composited from two sources). Center on the
+      // word, then clamp so the popover stays 8 px inside the viewport.
+      const wordCenter = rect.left + window.scrollX + rect.width / 2;
+      let left = wordCenter - POPOVER_WIDTH / 2;
+      const minLeft = window.scrollX + 8;
+      const maxLeft = window.scrollX + window.innerWidth - POPOVER_WIDTH - 8;
       if (left < minLeft) left = minLeft;
       if (left > maxLeft) left = maxLeft;
       setPos({ top: rect.bottom + window.scrollY + 8, left });
@@ -93,28 +97,20 @@ export default function InteractiveWord({ token, kind, entry, progress, setProgr
       >
         {token}
       </button>
-      <AnimatePresence>
-        {open &&
-          createPortal(
-            <motion.div
-              ref={popoverRef}
-              initial={{ opacity: 0, y: 4, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 4, scale: 0.96 }}
-              transition={{ duration: 0.15 }}
-              style={{
-                position: 'absolute',
-                top: pos.top,
-                left: pos.left,
-                transform: 'translateX(-50%)',
-              }}
-              className="z-50 w-72 rounded-2xl border border-white/15 bg-slate-900/95 p-3 text-left shadow-card backdrop-blur-xl"
-            >
-              <Popover entry={entry} kind={kind} onClose={() => setOpen(false)} onMarkKnown={markKnown} />
-            </motion.div>,
-            document.body
-          )}
-      </AnimatePresence>
+      {open &&
+        createPortal(
+          <motion.div
+            ref={popoverRef}
+            initial={{ opacity: 0, y: 4, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.15 }}
+            style={{ position: 'absolute', top: pos.top, left: pos.left }}
+            className="z-50 w-72 rounded-2xl border border-white/15 bg-slate-900/95 p-3 text-left shadow-card backdrop-blur-xl"
+          >
+            <Popover entry={entry} kind={kind} onClose={() => setOpen(false)} onMarkKnown={markKnown} />
+          </motion.div>,
+          document.body
+        )}
     </>
   );
 }
